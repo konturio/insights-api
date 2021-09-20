@@ -96,7 +96,7 @@ public class PopulationRepository {
                 "            '68-100'                                                         as percentage," +
                 "            'Kontur Settled Periphery'                                       as name," +
                 "            round(sum(area_km2)::numeric, 2)                                 as areaKm2," +
-                "            ST_AsGeoJSON(ST_Transform(ST_Buffer(St_Collect(geom), 0), 4326)) as geometry," +
+                "            ST_AsGeoJSON(ST_Transform(ST_MakeValid(St_Collect(geom)), 4326)) as geometry," +
                 "            t.population                                                     as totalPopulation," +
                 "            t.area                                                           as totalAreaKm2" +
                 "        from stat_in_area s," +
@@ -108,7 +108,7 @@ public class PopulationRepository {
                 "            '0-68'                                                           as percentage," +
                 "            'Kontur Urban Core'                                              as name," +
                 "            round(sum(area_km2)::numeric, 2)                                 as areaKm2," +
-                "            ST_AsGeoJSON(ST_Transform(ST_Buffer(St_Collect(geom), 0), 4326)) as geometry," +
+                "            ST_AsGeoJSON(ST_Transform(ST_MakeValid(St_Collect(geom)), 4326)) as geometry," +
                 "            t.population                                                     as totalPopulation," +
                 "            t.area                                                           as totalAreaKm2" +
                 "        from stat_in_area s," +

@@ -26,7 +26,7 @@ public class UrbanCoreResolver implements GraphQLResolver<Analytics> {
 
     public UrbanCore getUrbanCore(Analytics analytics, DataFetchingEnvironment environment) throws JsonProcessingException {
         var polygon = helper.getPolygonFromRequest(environment);
-        var transformedGeometry = geometryTransformer.transformToWkt(polygon);
+        var transformedGeometry = geometryTransformer.transform(polygon);
         var fieldList = environment.getSelectionSet().getFields().stream()
                 .map(SelectedField::getQualifiedName)
                 .collect(Collectors.toList());

@@ -10,7 +10,7 @@ as
     declare
         area_limit     bigint := 10000;
         resolution     int    := 8;
-        geom_area      bigint := ST_Area(geometry::geography) / 1000000;
+        geom_area      bigint := ST_Area(ST_UnaryUnion(ST_MakeValid(geometry))::geography) / 1000000;
         populated_area bigint;
     begin
         select sum(populated_area_km2)

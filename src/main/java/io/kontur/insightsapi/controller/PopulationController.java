@@ -1,6 +1,7 @@
 package io.kontur.insightsapi.controller;
 
 import io.kontur.insightsapi.dto.*;
+import io.kontur.insightsapi.model.InputGeometryType;
 import io.kontur.insightsapi.service.PopulationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "Population", description = "Population API")
 @RestController
 @RequestMapping("/population")
+@Deprecated
 public class PopulationController {
 
     private final Logger logger;
@@ -67,7 +69,7 @@ public class PopulationController {
         try {
             ZonedDateTime start = ZonedDateTime.now(ZoneId.of("UTC"));
             logger.debug("Start time: {}", start.toString());
-            StatisticDto statistic = populationService.calculatePopulation(info.getPolygon());
+            StatisticDto statistic = populationService.calculatePopulation(info.getPolygon(), InputGeometryType.WKT);
             ZonedDateTime end = ZonedDateTime.now(ZoneId.of("UTC"));
             logger.debug("End time: {}. Duration: {} ms", end.toString(), (end.toInstant().toEpochMilli() - start.toInstant().toEpochMilli()));
             return statistic;
@@ -95,7 +97,7 @@ public class PopulationController {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bad input geometry");
         }
-        List<HumanitarianImpactDto> impactDtos = populationService.calculateHumanitarianImpact(wkt);
+        List<HumanitarianImpactDto> impactDtos = populationService.calculateHumanitarianImpact(wkt, InputGeometryType.WKT);
         return populationService.convertImpactIntoFeatureCollection(wkt, impactDtos);
     }
 
@@ -126,7 +128,7 @@ public class PopulationController {
             }
             SeveralPolygonsCalculationOutputDto outputDTO = new SeveralPolygonsCalculationOutputDto();
             outputDTO.setId(dto.getId());
-            outputDTO.setStatistic(populationService.calculatePopulation(dto.getGeometry()));
+            outputDTO.setStatistic(populationService.calculatePopulation(dto.getGeometry(), InputGeometryType.WKT));
             result.add(outputDTO);
         });
         Date end = new Date();

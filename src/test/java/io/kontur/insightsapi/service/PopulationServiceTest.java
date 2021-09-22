@@ -2,6 +2,7 @@ package io.kontur.insightsapi.service;
 
 import io.kontur.insightsapi.dto.CalculatePopulationDto;
 import io.kontur.insightsapi.dto.StatisticDto;
+import io.kontur.insightsapi.model.InputGeometryType;
 import io.kontur.insightsapi.repository.PopulationRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,10 +22,10 @@ class PopulationServiceTest {
     void calculatePopulation() {
         PopulationRepository populationRepository = mock(PopulationRepository.class);
         PopulationService populationService = new PopulationService(populationRepository);
-        when(populationRepository.getPopulationAndGdp(POPULATION_QUERY)).thenReturn(getPopulation());
-        when(populationRepository.getArea(POPULATION_QUERY)).thenReturn(BigDecimal.ONE);
+        when(populationRepository.getPopulationAndGdp(POPULATION_QUERY, InputGeometryType.WKT)).thenReturn(getPopulation());
+        when(populationRepository.getArea(POPULATION_QUERY, InputGeometryType.WKT)).thenReturn(BigDecimal.ONE);
 
-        StatisticDto statistic = populationService.calculatePopulation(POPULATION_QUERY);
+        StatisticDto statistic = populationService.calculatePopulation(POPULATION_QUERY, InputGeometryType.WKT);
         Assertions.assertNotNull(statistic, "Population statistic is not received");
         Map<String, CalculatePopulationDto> population = getPopulation();
 

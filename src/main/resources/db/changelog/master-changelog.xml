@@ -9,5 +9,7 @@
     <include  file="calculate_area_resolution.sql" relativeToChangelogFile="true"/>
     <include  file="calculate_population_and_gdp_for_wkt.sql" relativeToChangelogFile="true"/>
     <include  file="calculate_area_resolution_intersects_fix.sql" relativeToChangelogFile="true"/>
+    <include  file="create_geometry.sql" relativeToChangelogFile="true"/>
+    <include  file="calculate_population_and_gdp_all_geometries.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

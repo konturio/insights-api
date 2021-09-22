@@ -3,6 +3,7 @@ package io.kontur.insightsapi.service;
 import io.kontur.insightsapi.dto.CalculatePopulationDto;
 import io.kontur.insightsapi.dto.HumanitarianImpactDto;
 import io.kontur.insightsapi.dto.StatisticDto;
+import io.kontur.insightsapi.model.InputGeometryType;
 import io.kontur.insightsapi.model.OsmQuality;
 import io.kontur.insightsapi.model.UrbanCore;
 import io.kontur.insightsapi.repository.PopulationRepository;
@@ -31,26 +32,26 @@ public class PopulationService {
 
     private final Logger logger = LoggerFactory.getLogger(PopulationService.class);
 
-    public Optional<Map<String, CalculatePopulationDto>> calculatePopulationAndGdp(String geometry) {
-        Map<String, CalculatePopulationDto> population = populationRepository.getPopulationAndGdp(geometry);
+    public Optional<Map<String, CalculatePopulationDto>> calculatePopulationAndGdp(String geometry, InputGeometryType type) {
+        Map<String, CalculatePopulationDto> population = populationRepository.getPopulationAndGdp(geometry, type);
         return Optional.ofNullable(population);
     }
 
-    public BigDecimal calculateArea(String geometry) {
-        return populationRepository.getArea(geometry);
+    public BigDecimal calculateArea(String geometry, InputGeometryType geometryType) {
+        return populationRepository.getArea(geometry, geometryType);
     }
 
-    public List<HumanitarianImpactDto> calculateHumanitarianImpact(String wkt) {
-        return populationRepository.calculateHumanitarianImpact(wkt);
+    public List<HumanitarianImpactDto> calculateHumanitarianImpact(String geometry, InputGeometryType type) {
+        return populationRepository.calculateHumanitarianImpact(geometry, type);
     }
 
-    public StatisticDto calculatePopulation(String geometry) {
+    public StatisticDto calculatePopulation(String geometry, InputGeometryType type) {
         if (StringUtils.isBlank(geometry)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empty input geometry");
         }
         StatisticDto statistic = new StatisticDto();
-        if (BigDecimal.ZERO.compareTo(calculateArea(geometry)) < 0) {
-            Optional<Map<String, CalculatePopulationDto>> populationStatistic = calculatePopulationAndGdp(geometry);
+        if (BigDecimal.ZERO.compareTo(calculateArea(geometry, type)) < 0) {
+            Optional<Map<String, CalculatePopulationDto>> populationStatistic = calculatePopulationAndGdp(geometry, type);
             if (populationStatistic.isEmpty()) {
                 logger.warn("Population statistic was not found for geometry: {}", geometry);
                 statistic.setPopulation(new BigDecimal(0));

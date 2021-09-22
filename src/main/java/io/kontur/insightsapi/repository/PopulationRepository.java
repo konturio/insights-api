@@ -3,6 +3,7 @@ package io.kontur.insightsapi.repository;
 import com.google.common.collect.Lists;
 import io.kontur.insightsapi.dto.CalculatePopulationDto;
 import io.kontur.insightsapi.dto.HumanitarianImpactDto;
+import io.kontur.insightsapi.model.InputGeometryType;
 import io.kontur.insightsapi.model.OsmQuality;
 import io.kontur.insightsapi.model.UrbanCore;
 import io.kontur.insightsapi.service.Helper;
@@ -44,10 +45,11 @@ public class PopulationRepository {
     private final Helper helper;
 
     @Transactional(readOnly = true)
-    public Map<String, CalculatePopulationDto> getPopulationAndGdp(String geometry) {
-        var paramSource = new MapSqlParameterSource("geometry", geometry);
+    public Map<String, CalculatePopulationDto> getPopulationAndGdp(String geometry, InputGeometryType geometryType) {
+        var paramSource = new MapSqlParameterSource("geometry", geometry)
+                .addValue("geometryType", geometryType.toString().toLowerCase());
         var query = "select type, population, urban, gdp" +
-                "        from calculate_population_and_gdp_for_wkt(:geometry)";
+                "        from calculate_population_and_gdp_all_geometries(:geometry, :geometryType)";
 
         return Map.of("population", Objects.requireNonNull(namedParameterJdbcTemplate.queryForObject(query, paramSource, (rs, rowNum) ->
                 CalculatePopulationDto.builder()
@@ -58,27 +60,29 @@ public class PopulationRepository {
     }
 
     @Transactional(readOnly = true)
-    public BigDecimal getArea(String geometry) {
-        var paramSource = new MapSqlParameterSource("geometry", geometry);
-        var query = "select ST_Area(ST_GeomFromText(:geometry))";
+    public BigDecimal getArea(String geometry, InputGeometryType geometryType) {
+        var paramSource = new MapSqlParameterSource("geometry", geometry)
+                .addValue("geometryType", geometryType.toString().toLowerCase());
+        var query = "select ST_Area(create_geometry(:geometry, :geometryType))";
         return namedParameterJdbcTemplate.queryForObject(query, paramSource, BigDecimal.class);
     }
 
     @Transactional(readOnly = true)
-    public List<HumanitarianImpactDto> calculateHumanitarianImpact(String wkt) {
-        var paramSource = new MapSqlParameterSource("wkt", wkt);
-        var query = "        with resolution as (" +
-                "            select calculate_area_resolution(ST_SetSRID(:wkt::geometry, 4326)) as resolution" +
-                "        )," +
+    public List<HumanitarianImpactDto> calculateHumanitarianImpact(String geometry, InputGeometryType geometryType) {
+        var paramSource = new MapSqlParameterSource("geometry", geometry)
+                .addValue("geometryType", geometryType.toString().toLowerCase());
+        var query = "with resolution as (" +
+                "            select calculate_area_resolution(ST_SetSRID(create_geometry(:geometry, :geometryType), 4326)) "+
+                " as resolution)," +
                 "            subdivided_input as (" +
-                "                select ST_Subdivide(" +
-                "                        ST_CollectionExtract(" +
-                "                                ST_MakeValid(ST_Transform(" +
-                "                                        ST_WrapX(ST_WrapX(" +
-                "                                                ST_SetSRID(ST_GeomFromEWKT(:wkt), 4326)," +
-                "                                                180, -360), -180, 360), 3857))," +
-                "                                3), 150) as geom" +
-                "            )," +
+                "                select ST_Subdivide( " +
+                "                                        ST_CollectionExtract( " +
+                "                                                ST_MakeValid(ST_Transform( " +
+                "                                                        ST_WrapX(ST_WrapX( " +
+                "                                                                ST_SetSRID(create_geometry(:geometry, :geometryType), 4326), " +
+                "                                                                180, -360), -180, 360), 3857)), " +
+                "                                                3), 150)"+
+                " as geom)," +
                 "            stat_in_area as (select s.*, sum(population) over (order by population desc) as sum_pop" +
                 "                             from (select distinct population, s.geom, area_km2, s.h3 as h3" +
                 "                                   from stat_h3 s," +
@@ -144,7 +148,7 @@ public class PopulationRepository {
                 "           stat_area as (" +
                 "                         select distinct h3 as h3_d, sh3.* from stat_h3 sh3, subdivided_polygon sp " +
                 "                         where ST_Intersects(sh3.geom, sp.geom) " +
-                "                     )"+
+                "                     )" +
                 "select " + StringUtils.join(queryList, ", ") + " from stat_area st " +
                 "where zoom = 8 and population > 0";
         try {
@@ -172,18 +176,18 @@ public class PopulationRepository {
     }
 
     @Transactional(readOnly = true)
-    public UrbanCore calculateUrbanCore(String wkt, List<String> fieldList) {
+    public UrbanCore calculateUrbanCore(String geojson, List<String> fieldList) {
         var queryList = helper.transformFieldList(fieldList, urbanCoreQueryMap);
-        var paramSource = new MapSqlParameterSource("wkt", wkt);
+        var paramSource = new MapSqlParameterSource("geojson", geojson);
         var query = "        with resolution as (" +
-                "            select calculate_area_resolution(ST_SetSRID(:wkt::geometry, 4326)) as resolution" +
+                "            select calculate_area_resolution(ST_SetSRID(ST_GeomFromGeoJSON(:geojson::json), 4326)) as resolution" +
                 "        )," +
                 "            subdivided_input as (" +
                 "                select ST_Subdivide(" +
                 "                        ST_CollectionExtract(" +
                 "                                ST_MakeValid(ST_Transform(" +
                 "                                        ST_WrapX(ST_WrapX(" +
-                "                                                ST_SetSRID(ST_GeomFromEWKT(:wkt), 4326)," +
+                "                                                ST_SetSRID(ST_GeomFromGeoJSON(:geojson::json), 4326)," +
                 "                                                180, -360), -180, 360), 3857))," +
                 "                                3), 150) as geom" +
                 "            )," +

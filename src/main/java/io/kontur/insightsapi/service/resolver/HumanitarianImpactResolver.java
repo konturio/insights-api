@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.kickstart.tools.GraphQLResolver;
 import graphql.schema.DataFetchingEnvironment;
 import io.kontur.insightsapi.model.Analytics;
+import io.kontur.insightsapi.model.InputGeometryType;
 import io.kontur.insightsapi.service.GeometryTransformer;
 import io.kontur.insightsapi.service.Helper;
 import io.kontur.insightsapi.service.PopulationService;
@@ -25,8 +26,8 @@ public class HumanitarianImpactResolver implements GraphQLResolver<Analytics> {
 
     public String getHumanitarianImpact(Analytics analytics, DataFetchingEnvironment environment) throws JsonProcessingException {
         var polygon = helper.getPolygonFromRequest(environment);
-        var transformedGeometry = geometryTransformer.transformToWkt(polygon);
-        var impactDtos = populationService.calculateHumanitarianImpact(transformedGeometry);
+        var transformedGeometry = geometryTransformer.transform(polygon);
+        var impactDtos = populationService.calculateHumanitarianImpact(transformedGeometry, InputGeometryType.GEOJSON);
         var collection = populationService.convertImpactIntoFeatureCollection(transformedGeometry, impactDtos);
         return objectMapper.writeValueAsString(collection);
     }

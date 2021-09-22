@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.wololo.geojson.*;
-import org.wololo.jts2geojson.GeoJSONReader;
 
 import java.util.Arrays;
 
@@ -28,12 +27,6 @@ public class GeometryTransformer {
             default:
                 return geoJsonString;
         }
-    }
-
-    public String transformToWkt(String geoJsonString) throws JsonProcessingException {
-        String transformedString = transform(geoJsonString);
-        org.locationtech.jts.geom.Geometry geometry = new GeoJSONReader().read(transformedString);
-        return geometry.toString();
     }
 
     private String transformToGeometryCollection(GeoJSON geoJSON) throws JsonProcessingException {

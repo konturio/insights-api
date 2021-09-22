@@ -1,6 +1,7 @@
 package io.kontur.insightsapi.service;
 
 import io.kontur.insightsapi.dto.CalculatePopulationDto;
+import io.kontur.insightsapi.model.InputGeometryType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +24,7 @@ class PopulationServiceIT {
 
     @Test
     void calculatePopulationAndGdp() {
-        Optional<Map<String, CalculatePopulationDto>> population = populationService.calculatePopulationAndGdp(POPULATION_QUERY);
+        Optional<Map<String, CalculatePopulationDto>> population = populationService.calculatePopulationAndGdp(POPULATION_QUERY, InputGeometryType.WKT);
         Assertions.assertTrue(population.isPresent(), "Population is not received");
         Assertions.assertTrue(population.get().size() >= 1);
         Assertions.assertEquals(BigDecimal.valueOf(700), population.get().values().iterator().next().getPopulation());
@@ -34,7 +35,7 @@ class PopulationServiceIT {
 
     @Test
     void calculateArea() {
-        BigDecimal area = populationService.calculateArea(POPULATION_QUERY);
+        BigDecimal area = populationService.calculateArea(POPULATION_QUERY, InputGeometryType.WKT);
         Assertions.assertNotNull(area, "Area is not received");
         Assertions.assertTrue(area.compareTo(BigDecimal.ZERO) > 0);
     }

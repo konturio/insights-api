@@ -1,5 +1,0 @@
-input FunctionArgs {
-    name: String,
-    x: String,
-    y: String
-}

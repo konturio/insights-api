@@ -11,23 +11,25 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class Functions {
 
-    private BigDecimal population;
+    private Long population;
 
     private BigDecimal settledArea;
 
-    private BigDecimal peopleWithoutOsmObjects;
+    private BigDecimal osmGaps;
+
+    private Long peopleWithoutOsmObjects;
 
     private BigDecimal settledAreaWithoutOsmObjects;
 
     private BigDecimal settledAreaWithoutOsmBuildingsPercent;
 
-    private BigDecimal peopleWithoutOsmBuildings;
+    private Long peopleWithoutOsmBuildings;
 
     private BigDecimal settledAreaWithoutOsmBuildings;
 
     private BigDecimal settledAreaWithoutOsmRoadsPercent;
 
-    private BigDecimal peopleWithoutOsmRoads;
+    private Long peopleWithoutOsmRoads;
 
     private BigDecimal settledAreaWithoutOsmRoads;
 }

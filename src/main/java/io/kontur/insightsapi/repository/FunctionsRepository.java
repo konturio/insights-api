@@ -4,11 +4,13 @@ import io.kontur.insightsapi.model.Functions;
 import io.kontur.insightsapi.service.Helper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +39,7 @@ public class FunctionsRepository {
     private final Helper helper;
 
     @Transactional(readOnly = true)
-    public Functions calculateFunctions(String geojson, List<String> fieldList){
+    public Functions calculateFunctions(String geojson, List<String> fieldList) {
         var queryList = helper.transformFieldList(fieldList, queryMap);
         var paramSource = new MapSqlParameterSource("polygon", geojson);
         var query = String.format("""
@@ -64,19 +66,35 @@ public class FunctionsRepository {
                                     ) 
                 select %s from stat_area st
                 """.trim(), StringUtils.join(queryList, ", "));
-        return namedParameterJdbcTemplate.queryForObject(query, paramSource, (rs, rowNum) ->
-                Functions.builder()
-                        .population(rs.getLong("population"))
-                        .settledArea(rs.getBigDecimal("settledArea"))
-                        .osmGaps(rs.getBigDecimal("osmGaps"))
-                        .peopleWithoutOsmObjects(rs.getLong("peopleWithoutOsmObjects"))
-                        .settledAreaWithoutOsmObjects(rs.getBigDecimal("settledAreaWithoutOsmObjects"))
-                        .settledAreaWithoutOsmBuildingsPercent(rs.getBigDecimal("settledAreaWithoutOsmBuildingsPercent"))
-                        .peopleWithoutOsmBuildings(rs.getLong("peopleWithoutOsmBuildings"))
-                        .settledAreaWithoutOsmBuildings(rs.getBigDecimal("settledAreaWithoutOsmBuildings"))
-                        .settledAreaWithoutOsmRoadsPercent(rs.getBigDecimal("settledAreaWithoutOsmRoadsPercent"))
-                        .peopleWithoutOsmRoads(rs.getLong("peopleWithoutOsmRoads"))
-                        .settledAreaWithoutOsmRoads(rs.getBigDecimal("settledAreaWithoutOsmRoads"))
-                        .build());
+        try {
+            return namedParameterJdbcTemplate.queryForObject(query, paramSource, (rs, rowNum) ->
+                    Functions.builder()
+                            .population(rs.getLong("population"))
+                            .settledArea(rs.getBigDecimal("settledArea"))
+                            .osmGaps(rs.getBigDecimal("osmGaps"))
+                            .peopleWithoutOsmObjects(rs.getLong("peopleWithoutOsmObjects"))
+                            .settledAreaWithoutOsmObjects(rs.getBigDecimal("settledAreaWithoutOsmObjects"))
+                            .settledAreaWithoutOsmBuildingsPercent(rs.getBigDecimal("settledAreaWithoutOsmBuildingsPercent"))
+                            .peopleWithoutOsmBuildings(rs.getLong("peopleWithoutOsmBuildings"))
+                            .settledAreaWithoutOsmBuildings(rs.getBigDecimal("settledAreaWithoutOsmBuildings"))
+                            .settledAreaWithoutOsmRoadsPercent(rs.getBigDecimal("settledAreaWithoutOsmRoadsPercent"))
+                            .peopleWithoutOsmRoads(rs.getLong("peopleWithoutOsmRoads"))
+                            .settledAreaWithoutOsmRoads(rs.getBigDecimal("settledAreaWithoutOsmRoads"))
+                            .build());
+        } catch (EmptyResultDataAccessException e) {
+            return Functions.builder()
+                    .population(0L)
+                    .settledArea(new BigDecimal(0))
+                    .osmGaps(new BigDecimal(0))
+                    .peopleWithoutOsmObjects(0L)
+                    .settledAreaWithoutOsmObjects(new BigDecimal(0))
+                    .settledAreaWithoutOsmBuildingsPercent(new BigDecimal(0))
+                    .peopleWithoutOsmBuildings(0L)
+                    .settledAreaWithoutOsmBuildings(new BigDecimal(0))
+                    .settledAreaWithoutOsmRoadsPercent(new BigDecimal(0))
+                    .peopleWithoutOsmRoads(0L)
+                    .settledAreaWithoutOsmRoads(new BigDecimal(0))
+                    .build();
+        }
     }
 }

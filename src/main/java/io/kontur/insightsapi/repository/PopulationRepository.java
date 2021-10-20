@@ -83,7 +83,7 @@ public class PopulationRepository {
                                  3857)) geom
                          from ST_Dump(ST_CollectionExtract(ST_SetSRID(
                                                                    :wkt::geometry, 4326
-                                                                          ), 3)) d
+                                                                          ))) d
                      ),
                     subdivided_polygons as (
                               select ST_Subdivide(v.geom) geom
@@ -153,7 +153,7 @@ public class PopulationRepository {
                             3857)) geom
                     from ST_Dump(ST_CollectionExtract(ST_GeomFromGeoJSON(
                                                               :polygon::jsonb
-                                                                     ), 3)) d
+                                                                     ))) d
                 ),
                      subdivided_polygons as materialized (
                          select ST_Subdivide(v.geom) geom
@@ -208,7 +208,7 @@ public class PopulationRepository {
                                  3857)) geom
                          from ST_Dump(ST_CollectionExtract(ST_SetSRID(
                                                                    :wkt::geometry, 4326
-                                                                          ), 3)) d
+                                                                          ))) d
                      ),
                     subdivided_input as (
                               select ST_Subdivide(v.geom) geom

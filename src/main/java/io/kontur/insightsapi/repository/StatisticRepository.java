@@ -443,7 +443,7 @@ public class StatisticRepository {
                             3857)) geom
                     from ST_Dump(ST_CollectionExtract(ST_GeomFromGeoJSON(
                                                               :polygon::jsonb
-                                                                     ), 3)) d
+                                                                     ))) d
                 ),
                 subdivided_polygons as (
                          select ST_Subdivide(v.geom) geom

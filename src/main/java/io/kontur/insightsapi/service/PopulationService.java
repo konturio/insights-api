@@ -49,7 +49,7 @@ public class PopulationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empty input geometry");
         }
         StatisticDto statistic = new StatisticDto();
-        if (BigDecimal.ZERO.compareTo(calculateArea(geometry)) < 0) {
+        if (BigDecimal.ZERO.compareTo(calculateArea(geometry)) <= 0) {
             Optional<Map<String, CalculatePopulationDto>> populationStatistic = calculatePopulationAndGdp(geometry);
             if (populationStatistic.isEmpty()) {
                 logger.warn("Population statistic was not found for geometry: {}", geometry);

@@ -42,7 +42,7 @@ public class ThermalSpotRepository {
                             3857)) geom
                     from ST_Dump(ST_CollectionExtract(ST_GeomFromGeoJSON(
                                                               :polygon::jsonb
-                                                                     ), 3)) d
+                                                                     ))) d
                 ),
                 subdivided_polygons as materialized (
                          select ST_Subdivide(v.geom) geom

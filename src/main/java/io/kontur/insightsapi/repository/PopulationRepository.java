@@ -6,6 +6,7 @@ import io.kontur.insightsapi.dto.HumanitarianImpactDto;
 import io.kontur.insightsapi.model.OsmQuality;
 import io.kontur.insightsapi.model.UrbanCore;
 import io.kontur.insightsapi.service.Helper;
+import io.kontur.insightsapi.service.SlowQueryDetection;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ public class PopulationRepository {
 
     private final Helper helper;
 
+    @SlowQueryDetection(paramWithGeometry = "geometry")
     @Transactional(readOnly = true)
     public Map<String, CalculatePopulationDto> getPopulationAndGdp(String geometry) {
         var paramSource = new MapSqlParameterSource("geometry", geometry);
@@ -68,6 +70,7 @@ public class PopulationRepository {
         }
     }
 
+    @SlowQueryDetection(paramWithGeometry = "geometry")
     @Transactional(readOnly = true)
     public BigDecimal getArea(String geometry) {
         var paramSource = new MapSqlParameterSource("geometry", geometry);
@@ -81,6 +84,7 @@ public class PopulationRepository {
         }
     }
 
+    @SlowQueryDetection(paramWithGeometry = "geometry")
     @Transactional(readOnly = true)
     public List<HumanitarianImpactDto> calculateHumanitarianImpact(String geometry) {
         var paramSource = new MapSqlParameterSource("geometry", geometry);
@@ -148,6 +152,7 @@ public class PopulationRepository {
         }
     }
 
+    @SlowQueryDetection(paramWithGeometry = "geojson")
     @Transactional(readOnly = true)
     public OsmQuality calculateOsmQuality(String geojson, List<String> fieldList) {
         var queryList = helper.transformFieldList(fieldList, queryMap);
@@ -208,6 +213,7 @@ public class PopulationRepository {
         }
     }
 
+    @SlowQueryDetection(paramWithGeometry = "geojson")
     @Transactional(readOnly = true)
     public UrbanCore calculateUrbanCore(String geojson, List<String> fieldList) {
         var queryList = helper.transformFieldList(fieldList, urbanCoreQueryMap);

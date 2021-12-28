@@ -2,6 +2,7 @@ package io.kontur.insightsapi.repository;
 
 import io.kontur.insightsapi.dto.FunctionArgs;
 import io.kontur.insightsapi.model.FunctionResult;
+import io.kontur.insightsapi.service.SlowQueryDetection;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ public class FunctionsRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+    @SlowQueryDetection(paramWithGeometry = "geojson")
     @Transactional(readOnly = true)
     public List<FunctionResult> calculateFunctionsResult(String geojson, List<FunctionArgs> args) {
         List<String> params = args.stream()

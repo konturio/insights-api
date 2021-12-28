@@ -2,6 +2,7 @@ package io.kontur.insightsapi.repository;
 
 import io.kontur.insightsapi.model.ThermalSpotStatistic;
 import io.kontur.insightsapi.service.Helper;
+import io.kontur.insightsapi.service.SlowQueryDetection;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ public class ThermalSpotRepository {
 
     private final Helper helper;
 
+    @SlowQueryDetection(paramWithGeometry = "geojson")
     @Transactional(readOnly = true)
     public ThermalSpotStatistic calculateThermalSpotStatistic(String geojson, List<String> fieldList) {
         var queryList = helper.transformFieldList(fieldList, queryMap);

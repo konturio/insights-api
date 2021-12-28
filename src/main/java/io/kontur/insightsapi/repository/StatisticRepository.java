@@ -7,6 +7,7 @@ import io.kontur.insightsapi.model.Axis;
 import io.kontur.insightsapi.model.BivariateStatistic;
 import io.kontur.insightsapi.model.PolygonCorrelationRate;
 import io.kontur.insightsapi.model.Statistic;
+import io.kontur.insightsapi.service.SlowQueryDetection;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -437,6 +438,7 @@ public class StatisticRepository {
                         .quality(rs.getDouble("quality")).build());
     }
 
+    @SlowQueryDetection(paramWithGeometry = "polygon")
     @Transactional(readOnly = true)
     public List<Double> getPolygonCorrelationRateStatisticsBatch(List<NumeratorsDenominatorsDto> dtoList, String polygon) {
         var paramSource = new MapSqlParameterSource();

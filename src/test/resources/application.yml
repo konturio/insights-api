@@ -5,3 +5,9 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/test-master-changelog.xml
+
+database:
+  request-duration:
+    yellow-zone: 100
+    orange-zone: 500
+    red-zone: 60000

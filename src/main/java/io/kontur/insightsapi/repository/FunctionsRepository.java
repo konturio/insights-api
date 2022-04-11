@@ -44,6 +44,7 @@ public class FunctionsRepository implements FunctionsService {
     @Retryable(value = EmptySqlQueryAnswer.class, backoff = @Backoff(delayExpression = "${retry.functionRequest.delay}",
             multiplierExpression = "${retry.functionRequest.multiplier}"))
     public List<FunctionResult> calculateFunctionsResult(String geojson, List<FunctionArgs> args) {
+        logger.warn("GET DATA FROM DB");
         List<String> params = args.stream()
                 .map(this::createFunctionsForSelect)
                 .toList();

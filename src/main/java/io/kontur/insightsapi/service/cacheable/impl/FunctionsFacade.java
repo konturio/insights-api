@@ -10,6 +10,8 @@ import io.kontur.insightsapi.repository.FunctionsRepository;
 import io.kontur.insightsapi.service.cacheable.CacheEvictable;
 import io.kontur.insightsapi.service.cacheable.FunctionsService;
 import lombok.SneakyThrows;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
@@ -30,6 +32,8 @@ public class FunctionsFacade implements FunctionsService, CacheEvictable {
 
     private final HashFunction hashFunction;
 
+    private final Logger logger = LoggerFactory.getLogger(FunctionsFacade.class);
+
     public FunctionsFacade(FunctionsRepository repository, @Value("${cache.maximumSize}") Integer maximumSize) {
         this.repository = repository;
         this.cache = CacheBuilder.newBuilder()
@@ -42,6 +46,7 @@ public class FunctionsFacade implements FunctionsService, CacheEvictable {
     @SneakyThrows
     @Override
     public List<FunctionResult> calculateFunctionsResult(String geojson, List<FunctionArgs> args) {
+        logger.info("GET DATA FROM DB");
         return cache.get(keyGen(geojson, args),
                 () -> repository.calculateFunctionsResult(geojson, args));
     }

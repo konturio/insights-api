@@ -29,7 +29,7 @@
         <postgresql.version>42.3.1</postgresql.version>
         <jts2geojson.version>0.16.1</jts2geojson.version>
         <guava.version>31.1-jre</guava.version>
-        <postgresql-testcontainers.version>1.15.1</postgresql-testcontainers.version>
+        <postgresql-testcontainers.version>1.15.3</postgresql-testcontainers.version>
         <micrometer-registry-prometheus.version>1.5.1</micrometer-registry-prometheus.version>
 
         <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>

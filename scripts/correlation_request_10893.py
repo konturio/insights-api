@@ -6,8 +6,8 @@ from clickhouse_driver import connect
 
 
 def make_request(input_geom, indx):
-    with closing(psycopg2.connect(dbname='insights-api', user='insights-api',
-                                  password='c3RlUbuRM4RUSP4w0cEfyGUPAN5', host='localhost', port=55432)) as conn_pg:
+    with closing(psycopg2.connect(dbname='insights-api', user='user',
+                                  password='password', host='localhost', port=55432)) as conn_pg:
         with conn_pg.cursor() as cursor_pg:
             cursor_pg.execute("""
         with validated_input as (
@@ -34,7 +34,7 @@ from (
                     cursor_click.fetchall()
                     print('Thread: %s Temporary table created' % indx)
                     cursor_click.executemany('INSERT INTO h3_id%s (h3) VALUES' % indx, rows_pg)
-                    print('Thread: %s Insert data into temporary table' % indx)
+                    print("Thread: {} Insert data into temporary table. Row number: {}".format(indx, len(rows_pg)))
                     start = datetime.now()
                     cursor_click.execute("""select corrIf(population_prev / population, osm_users / area_km2, (population != 0 and area_km2 != 0)),
 	   corrIf(population_prev / total_building_count, osm_users / area_km2, (total_building_count != 0 and area_km2 != 0)),
@@ -78,6 +78,6 @@ from (
 	   corrIf(mandays_maxtemp_over_32c_1c / population, osm_users / area_km2, (population != 0 and area_km2 != 0)),
 	   corrIf(mandays_maxtemp_over_32c_1c / total_building_count, osm_users / area_km2, (total_building_count != 0 and area_km2 != 0)),
 	   corrIf(mandays_maxtemp_over_32c_1c / total_road_length, osm_users / area_km2, (total_road_length != 0 and area_km2 != 0))
-	   from stat_h3_indicators sth inner join h3_id{} h on (sth.h3=h.h3)""".format(indx))
+	   from stat_h3_indicators_v1 where id in (select h3 from h3_id{})""".format(indx))
                     print(cursor_click.fetchall())
                     print('Thread: {} Lead time: {}'.format(indx, datetime.now() - start))

@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 19:09:05>
+--- # Time-stamp: <2022-09-17 19:30:25>
 
 name: 10 Manual Deployment
 
@@ -79,12 +79,11 @@ jobs:
         env:
           CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT_DEV }}
           CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY_DEV }}
+          STAGE: dev
         run: |-
+          set -e
+          external/helm/insights-api/install_upgrade.sh
           kubectl version
-      #   run: >
-      #     ansible-playbook -vD -e "version=${{needs.helper.outputs.CI_COMMIT_REF_SLUG}}-${{github.run_id}}
-      #     path_to_dist=$(find $GITHUB_WORKSPACE -maxdepth 1 -name \*.zip -print -quit)"
-      #     --limit=dev_event_api ansible/deploy.yml
       #
       # - name: deploy-k8s-test
       #   if: "'deploy-k8s-test' == github.event.inputs.deployment_target"

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -e
-set -x
 CHART_PATH="./external/helm/insights-api/"
 KUBECFG_FILE="./external/kubeconfig.yaml"
 RELEASE="$STAGE-insights-api"
@@ -11,14 +10,15 @@ KUBECTL_OPTS="--kubeconfig $KUBECFG_FILE --context $STAGE"
 HELM_OPTS="--kubeconfig $KUBECFG_FILE --kube-context $STAGE"
 
 echo "STAGE=$STAGE is passed from CI job"
-
 echo "Set secrets from the environment variables to bot user"
 echo "kubectl $KUBECTL_OPTS config set clusters.$STAGE.certificate-authority-data (secret data)"
-kubectl $KUBECTL_OPTS config set clusters.$STAGE.certificate-authority-data $CERT_AUTH
+
+set -x
+
+kubectl $KUBECTL_OPTS config set clusters.$STAGE.certificate-authority-data "$CERT_AUTH"
 echo "kubectl $KUBECTL_OPTS config set users.$USER.client-key-data (secret data)"
-kubectl $KUBECTL_OPTS config set users.$USER.client-key-data $CLIENT_KEY
-echo "kubectl $KUBECTL_OPTS config set users.$USER.client-certificate-data (secret data)"
-kubectl $KUBECTL_OPTS config set users.$USER.client-certificate-data $CLIENT_CERT
+kubectl $KUBECTL_OPTS config set users.$USER.client-key-data "$CLIENT_KEY"
+kubectl $KUBECTL_OPTS config set users.$USER.client-certificate-data "$CLIENT_CERT"
 echo "render templates to save as Gitlab job artifacts"
 echo "helm $HELM_OPTS template $RELEASE $CHART_PATH -f $VALUES > pre-manifests.yaml"
 # helm $HELM_OPTS template $RELEASE $CHART_PATH -f $VALUES > pre-manifests.yaml

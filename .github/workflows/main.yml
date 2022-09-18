@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 19:15:29>
+--- # Time-stamp: <2022-09-17 20:19:59>
 
 name: 01 Building with Maven
 
@@ -49,10 +49,3 @@ jobs:
         with:
           name: helm-chart-with-actual-project-version
           path: external/helm/insights-api/Chart.yaml
-
-      # - name: Publishing JUnit Test result report
-      #   uses: konturio/action-junit-report@v3
-      #   if: always()
-      #   with:
-      #     report_paths: target/*-reports/*.xml
-      #     retention-days: 10

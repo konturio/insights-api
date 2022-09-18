@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 20:10:36>
+--- # Time-stamp: <2022-09-17 20:19:43>
 
 name: 10 Manual Deployment
 
@@ -41,6 +41,15 @@ jobs:
           echo "::set-output name=SHA::$(git log -1 --format='%H')"
           echo "::set-output name=REF::$(git symbolic-ref HEAD 2>/dev/null)"
 
+      - name: Download artifact(s)
+        id: download-artifact
+        uses: konturio/action-download-artifact@v2
+        with:
+          workflow: main.yml
+          workflow_conclusion: success
+          commit: '${{steps.get-cloned.outputs.SHA}}'
+          name: helm-chart-with-actual-project-version
+
       - name: Installing kubectl
         run: |-
           set -e
@@ -50,39 +59,6 @@ jobs:
           sudo install -o root -g root -m 0755 kubectl $(which kubectl)
           rm -f kubectl.sha256
 
-      # - name: Download artifact(s)
-      #   id: download-artifact
-      #   uses: konturio/action-download-artifact@v2
-      #   with:
-      #     workflow: main.yml
-      #     workflow_conclusion: success
-      #     commit: '${{steps.get-cloned.outputs.SHA}}'
-      #     name: 'event-api-${{needs.helper.outputs.CI_COMMIT_REF_SLUG}}'
-
-      # - name: Preparing Ansible's environment
-      #   if: >-
-      #     'deploy-k8s-dev' == github.event.inputs.deployment_target
-      #     || 'deploy-k8s-test' == github.event.inputs.deployment_target
-      #     || 'deploy-k8s-prod' == github.event.inputs.deployment_target
-      #   run: |-
-      #     set -e
-      #
-      #     wget -q https://kontur-github-runners.s3.eu-central-1.amazonaws.com/public_resources/projects/common/2022091500.tar.xz && tar -C "$HOME" -xf 2022091500.tar.xz && rm 2022091500.tar.xz
-      #
-      #     sudo mkdir -p -m 0755 /etc/ansible && sudo wget -q --no-use-server-timestamps -O /etc/ansible/hosts "https://kontur-github-runners.s3.eu-central-1.amazonaws.com/public_resources/ROOT--etc--ansible/hosts"
-      #
-      #     mkdir -p -m 0700 ~/.ssh
-      #     cat > ~/.ssh/id_ed25519 <<"EOF"
-      #     ${{ secrets.DEPLOYER_PRIVATE_KEY }}
-      #     EOF
-      #     chmod 0600 ~/.ssh/id_ed25519
-      #
-      #     sudo tee /etc/ansible/ansible.cfg <<EOF
-      #     [defaults]
-      #     # (boolean) Set this to "False" if you want to avoid host key checking by the underlying tools Ansible uses to connect to the host
-      #     host_key_checking=False
-      #     EOF
-
       - name: deploy-k8s-dev
         if: "'deploy-k8s-dev' == github.event.inputs.deployment_target"
         env:
@@ -90,20 +66,33 @@ jobs:
           CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT_DEV }}
           CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY_DEV }}
           STAGE: dev
+        run: external/helm/insights-api/install_upgrade.sh
+
+      - name: deploy-k8s-test
+        if: "'deploy-k8s-test' == github.event.inputs.deployment_target"
+        env:
+          CERT_AUTH: ${{ secrets.K8S_CERT_AUTH }}
+          CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT_TEST }}
+          CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY_TEST }}
+          STAGE: test
+        run: external/helm/insights-api/install_upgrade.sh
+
+      - name: deploy-k8s-prod
+        if: "'deploy-k8s-prod' == github.event.inputs.deployment_target"
+        env:
+          ALLOWED_REFS_PCRE: /^refs\/heads\/release-.*/
+          CERT_AUTH: ${{ secrets.K8S_CERT_AUTH }}
+          CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT_PROD }}
+          CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY_PROD }}
+          STAGE: prod
         run: |-
-          set -e
+          if [[ -z "${{steps.get-cloned.outputs.REF}}" ]]; then
+            echo "::error file=${{github.event.workflow}}::${{github.event.inputs.deployment_target}} refuses to deploy from a non-symbolic ref (commit ${{steps.get-cloned.outputs.SHA}})"
+            exit 1
+          fi
+          if [[ -z $(echo '${{steps.get-cloned.outputs.REF}}' | perl -ne "print if $ALLOWED_REFS_PCRE") ]]; then
+            echo "::error file=${{github.event.workflow}}::${{github.event.inputs.deployment_target}} refuses to deploy from '${{steps.get-cloned.outputs.REF}}'"
+            exit 1
+          fi
+
           external/helm/insights-api/install_upgrade.sh
-      #
-      # - name: deploy-k8s-test
-      #   if: "'deploy-k8s-test' == github.event.inputs.deployment_target"
-      #   run: >
-      #     ansible-playbook -vD -e "version=${{needs.helper.outputs.CI_COMMIT_REF_SLUG}}-${{github.run_id}}
-      #     path_to_dist=$(find $GITHUB_WORKSPACE -maxdepth 1 -name \*.zip -print -quit)"
-      #     --limit=test_event_api ansible/deploy.yml
-      #
-      # - name: deploy-k8s-prod
-      #   if: "'deploy-k8s-prod' == github.event.inputs.deployment_target"
-      #   run: >
-      #     ansible-playbook -vD -e "version=${{needs.helper.outputs.CI_COMMIT_REF_SLUG}}-${{github.run_id}}
-      #     path_to_dist=$(find $GITHUB_WORKSPACE -maxdepth 1 -name \*.zip -print -quit)"
-      #     --limit=dev_event_api ansible/deploy.yml

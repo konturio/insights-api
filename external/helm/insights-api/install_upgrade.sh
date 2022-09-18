@@ -11,14 +11,16 @@ HELM_OPTS="--kubeconfig $KUBECFG_FILE --kube-context $STAGE"
 
 echo "STAGE=$STAGE is passed from CI job"
 echo "Set secrets from the environment variables to bot user"
-echo "kubectl $KUBECTL_OPTS config set clusters.$STAGE.certificate-authority-data (secret data)"
 
 set -x
-
 kubectl $KUBECTL_OPTS config set clusters.$STAGE.certificate-authority-data "$CERT_AUTH"
-echo "kubectl $KUBECTL_OPTS config set users.$USER.client-key-data (secret data)"
 kubectl $KUBECTL_OPTS config set users.$USER.client-key-data "$CLIENT_KEY"
 kubectl $KUBECTL_OPTS config set users.$USER.client-certificate-data "$CLIENT_CERT"
+set +x
+
+kubectl $KUBECTL_OPTS version
+exit 1
+
 echo "render templates to save as Gitlab job artifacts"
 echo "helm $HELM_OPTS template $RELEASE $CHART_PATH -f $VALUES > pre-manifests.yaml"
 # helm $HELM_OPTS template $RELEASE $CHART_PATH -f $VALUES > pre-manifests.yaml

@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 19:53:31>
+--- # Time-stamp: <2022-09-17 19:57:41>
 
 name: 10 Manual Deployment
 
@@ -84,7 +84,6 @@ jobs:
         run: |-
           set -e
           external/helm/insights-api/install_upgrade.sh
-          kubectl version
       #
       # - name: deploy-k8s-test
       #   if: "'deploy-k8s-test' == github.event.inputs.deployment_target"

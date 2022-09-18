@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 20:06:51>
+--- # Time-stamp: <2022-09-17 20:10:36>
 
 name: 10 Manual Deployment
 
@@ -44,15 +44,11 @@ jobs:
       - name: Installing kubectl
         run: |-
           set -e
-          curl -LO https://dl.k8s.io/release/v1.23.10/bin/linux/amd64/kubectl
-          curl -LO "https://dl.k8s.io/v1.23.10/bin/linux/amd64/kubectl.sha256"
+          curl -sLO https://dl.k8s.io/release/v1.23.10/bin/linux/amd64/kubectl
+          curl -sLO "https://dl.k8s.io/v1.23.10/bin/linux/amd64/kubectl.sha256"
           echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          sudo install -o root -g root -m 0755 kubectl $(which kubectl)
           rm -f kubectl.sha256
-          set | grep PATH
-          which kubectl
-          ls -l `which kubectl`
-          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
 
       # - name: Download artifact(s)
       #   id: download-artifact

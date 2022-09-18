@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 18:34:30>
+--- # Time-stamp: <2022-09-17 18:47:43>
 
 name: 01 Building with Maven
 
@@ -30,12 +30,14 @@ jobs:
       - name: Building with Maven
         env:
           MAVEN_CLI_OPTS: '--batch-mode'
-          NEXUS_DEPLOYER: ${{ secrets.NEXUS_READER }}
-          NEXUS_DEPLOYER_PASS: ${{ secrets.NEXUS_READER_PASS }}
+          NEXUS_DEPLOYER: ${{ secrets.NEXUS_DEPLOYER }}
+          NEXUS_DEPLOYER_PASS: ${{ secrets.NEXUS_DEPLOYER_PASS }}
         run: |-
           set -e
 
           wget -q https://kontur-github-runners.s3.eu-central-1.amazonaws.com/public_resources/projects/common/2022091500.tar.xz && tar -C "$HOME" -xf 2022091500.tar.xz && rm 2022091500.tar.xz
+
+          echo '${{ secrets.NEXUS_READER_PASS }}' | docker login nexus.kontur.io:8085 -u '${{ secrets.NEXUS_READER }}' --password-stdin
 
           mvn $MAVEN_CLI_OPTS clean install -DskipTests jib:build -U -Prelease
           ls -lA ./external/helm/insights-api/

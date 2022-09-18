@@ -1,4 +1,4 @@
---- # Time-stamp: <2022-09-17 19:57:41>
+--- # Time-stamp: <2022-09-17 20:06:51>
 
 name: 10 Manual Deployment
 
@@ -40,6 +40,19 @@ jobs:
         run: |-
           echo "::set-output name=SHA::$(git log -1 --format='%H')"
           echo "::set-output name=REF::$(git symbolic-ref HEAD 2>/dev/null)"
+
+      - name: Installing kubectl
+        run: |-
+          set -e
+          curl -LO https://dl.k8s.io/release/v1.23.10/bin/linux/amd64/kubectl
+          curl -LO "https://dl.k8s.io/v1.23.10/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          rm -f kubectl.sha256
+          set | grep PATH
+          which kubectl
+          ls -l `which kubectl`
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
 
       # - name: Download artifact(s)
       #   id: download-artifact

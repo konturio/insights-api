@@ -19,7 +19,6 @@ kubectl $KUBECTL_OPTS config set users.$USER.client-key-data "$CLIENT_KEY"
 kubectl $KUBECTL_OPTS config set users.$USER.client-certificate-data "$CLIENT_CERT"
 set +x
 
-exit
 echo "render templates to save as Gitlab job artifacts"
 helm $HELM_OPTS template $RELEASE $CHART_PATH -f $VALUES > pre-manifests.yaml
 

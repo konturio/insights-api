@@ -16,6 +16,7 @@
     </parent>
 
     <properties>
+        <image.tag>${IMAGE_TAG}</image.tag>
         <java.version>16</java.version>
         <maven.compiler.release>16</maven.compiler.release>
         <project.resource.directory>src/main/resources</project.resource.directory>
@@ -28,7 +29,7 @@
         <graphql-spring-boot.version>12.0.0</graphql-spring-boot.version>
         <graphiql-spring-boot.version>11.1.0</graphiql-spring-boot.version>
         <graphql-java-extended-scalars.version>18.0</graphql-java-extended-scalars.version>
-        <postgresql.version>42.3.4</postgresql.version>
+        <postgresql.version>42.5.0</postgresql.version>
         <jts2geojson.version>0.17.0</jts2geojson.version>
         <guava.version>31.1-jre</guava.version>
         <postgresql-testcontainers.version>1.15.1</postgresql-testcontainers.version>
@@ -39,11 +40,9 @@
         <maven-failsafe-plugin.version>3.0.0-M6</maven-failsafe-plugin.version>
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-dependency-plugin.version>3.3.0</maven-dependency-plugin.version>
-        <maven-assembly-plugin.version>3.3.0</maven-assembly-plugin.version>
         <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
-        <maven-assembly-plugin.release.version>3.3.0</maven-assembly-plugin.release.version>
 
-        <jib.source.image>openjdk:17-alpine</jib.source.image>
+        <jib.source.image>openjdk:16-alpine</jib.source.image>
     </properties>
 
     <dependencies>
@@ -254,18 +253,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Config assembly for runnable app archive packaging -->
-            <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven-assembly-plugin.version}</version>
-                <configuration>
-                    <appendAssemblyId>false</appendAssemblyId>
-                    <descriptors>
-                        <descriptor>assembly.xml</descriptor>
-                    </descriptors>
-                    <tarLongFileMode>posix</tarLongFileMode>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -290,10 +277,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <url>https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.13.1/opentelemetry-javaagent.jar</url>
+                    <url>https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.16.0/opentelemetry-javaagent.jar</url>
                     <unpack>false</unpack>
                     <outputDirectory>${project.build.sourceDirectory}/../jib/opentelemetry/</outputDirectory>
-                    <md5>72a2f5977750a811d9d34aae58cd9b8a</md5>
+                    <md5>4f97ebd74d075e60c76ecdf47b61006a</md5>
                 </configuration>
             </plugin>
 
@@ -310,71 +297,23 @@
                             <jvmFlag>-server</jvmFlag>
                             <jvmFlag>-Xmx3200m</jvmFlag>
                             <jvmFlag>-Xms3200m</jvmFlag>
+                            <jvmFlag>-XX:+HeapDumpOnOutOfMemoryError</jvmFlag>
+                            <jvmFlag>-XX:HeapDumpPath=/tmp/insights_api_oom.hprof</jvmFlag>
+                            <jvmFlag>-Dcom.sun.management.jmxremote.ssl=false</jvmFlag>
+                            <jvmFlag>-Dcom.sun.management.jmxremote.authenticate=false</jvmFlag>
+                            <jvmFlag>-Dcom.sun.management.jmxremote.port=5000</jvmFlag>
+                            <jvmFlag>-Dcom.sun.management.jmxremote.rmi.port=5000</jvmFlag>
+                            <jvmFlag>-Dcom.sun.management.jmxremote=true</jvmFlag>
+                            <jvmFlag>-Djava.rmi.server.hostname=127.0.0.1</jvmFlag>
                         </jvmFlags>
                     </container>
                     <from>
                         <image>nexus.kontur.io:8084/library/${jib.source.image}</image>
                     </from>
                     <to>
-                        <image>nexus.kontur.io:8085/konturdev/${project.name}:${project.version}</image>
+                        <image>nexus.kontur.io:8085/konturdev/${project.name}:${image.tag}</image>
                     </to>
                 </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.2.0</version>
-                <executions>
-                    <execution>
-                        <id>default-testResources</id>
-                        <phase>process-test-resources</phase>
-                        <goals>
-                            <goal>testResources</goal>
-                        </goals>
-                        <configuration>
-                            <propertiesEncoding>UTF-8</propertiesEncoding>
-                            <delimiters>
-                                <delimiter>@</delimiter>
-                            </delimiters>
-                            <useDefaultDelimiters>false</useDefaultDelimiters>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-resources</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>resources</goal>
-                        </goals>
-                        <configuration>
-                            <propertiesEncoding>UTF-8</propertiesEncoding>
-                            <delimiters>
-                                <delimiter>@</delimiter>
-                            </delimiters>
-                            <useDefaultDelimiters>false</useDefaultDelimiters>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-resources</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.basedir}/external/helm/insights-api/</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/external/helm/insights-api/</directory>
-                                    <filtering>true</filtering>
-                                    <includes>
-                                        <include>Chart.yaml</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                            <includeEmptyDirs>false</includeEmptyDirs>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
@@ -404,26 +343,6 @@
                                 <image>nexus.kontur.io:8085/konturdev/${project.name}:${project.version}</image>
                             </to>
                         </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven-assembly-plugin.release.version}</version>
-                        <executions>
-                            <execution>
-                                <id>assembly</id>
-                                <phase>install</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
                 </plugins>
             </build>

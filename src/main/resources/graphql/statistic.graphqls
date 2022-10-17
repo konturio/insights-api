@@ -4,6 +4,7 @@ type Statistic {
     initAxis: InitAxis,
     overlays: [Overlay],
     indicators: [Indicator],
-    correlationRates: [CorrelationRate],
+    correlationRates: [Metrics],
+    covarianceRates: [Metrics],
     colors: Color
 }

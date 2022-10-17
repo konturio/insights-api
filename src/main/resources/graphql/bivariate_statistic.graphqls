@@ -4,6 +4,7 @@ type BivariateStatistic {
     initAxis: InitAxis,
     overlays: [Overlay],
     indicators: [Indicator],
-    correlationRates: [PolygonCorrelationRate],
+    correlationRates: [PolygonMetrics],
+    covarianceRates: [PolygonMetrics],
     colors: Color
 }

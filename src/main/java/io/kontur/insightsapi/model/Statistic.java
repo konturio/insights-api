@@ -9,5 +9,7 @@ import java.util.List;
 @Setter
 public class Statistic extends BaseStatistic {
 
-    private List<CorrelationRate> correlationRates;
+    private List<Metrics> correlationRates;
+
+    private List<Metrics> covarianceRates;
 }

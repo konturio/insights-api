@@ -9,5 +9,7 @@ import java.util.List;
 @Setter
 public class BivariateStatistic extends BaseStatistic {
 
-    private List<PolygonCorrelationRate> correlationRates;
+    private List<PolygonMetrics> correlationRates;
+
+    private List<PolygonMetrics> covarianceRates;
 }

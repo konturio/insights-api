@@ -4,11 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import graphql.kickstart.tools.GraphQLResolver;
 import graphql.schema.DataFetchingEnvironment;
-import io.kontur.insightsapi.dto.*;
+import io.kontur.insightsapi.dto.GraphDto;
+import io.kontur.insightsapi.dto.NodeDto;
+import io.kontur.insightsapi.dto.NumeratorsDenominatorsDto;
+import io.kontur.insightsapi.dto.PureNumeratorDenominatorDto;
 import io.kontur.insightsapi.model.Axis;
 import io.kontur.insightsapi.model.BivariateStatistic;
-import io.kontur.insightsapi.model.PolygonCorrelationRate;
-import io.kontur.insightsapi.service.GeometryTransformer;
+import io.kontur.insightsapi.model.PolygonMetrics;
+import io.kontur.insightsapi.service.MetricsHelper;
 import io.kontur.insightsapi.service.cacheable.CorrelationRateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,59 +26,37 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
 
     private final CorrelationRateService correlationRateService;
 
-    private final GeometryTransformer geometryTransformer;
+    private final MetricsHelper metricsHelper;
 
     @Value("${bivatiateMatrix.highCorrelationLevel}")
     private Double highCorrelationLevel;
 
-    public List<PolygonCorrelationRate> getCorrelationRates(BivariateStatistic statistic, DataFetchingEnvironment environment) throws JsonProcessingException {
+    public List<PolygonMetrics> getCorrelationRates(BivariateStatistic statistic, DataFetchingEnvironment environment) throws JsonProcessingException {
         Map<String, Object> arguments = (Map<String, Object>) environment.getExecutionStepInfo()
                 .getParent().getParent().getArguments().get("polygonStatisticRequest");
         var importantLayers = getImportantLayers(arguments);
         //no polygons defined
         if (!arguments.containsKey("polygon") && !arguments.containsKey("polygonV2")) {
             var correlationRateList = correlationRateService.getAllCorrelationRateStatistics().stream()
-                    .map(PolygonCorrelationRate::clone)
+                    .map(PolygonMetrics::clone)
                     .collect(Collectors.toList());
             fillParent(correlationRateList, importantLayers);
             return correlationRateList;
         }
-        var transformedGeometry = getPolygon(arguments);
 
-        //get numr & denm from bivariate_axis & bivariate_indicators size nearly 17k
-        List<NumeratorsDenominatorsDto> numeratorsDenominatorsDtos = correlationRateService.getNumeratorsDenominatorsForCorrelation()
-                .stream()
-                .sorted(Comparator.comparing(NumeratorsDenominatorsDto::getXLabel)
-                        .thenComparing(NumeratorsDenominatorsDto::getYLabel)
-                        .thenComparing(NumeratorsDenominatorsDto::getXNumerator)
-                        .thenComparing(NumeratorsDenominatorsDto::getXDenominator)
-                        .thenComparing(NumeratorsDenominatorsDto::getYNumerator)
-                        .thenComparing(NumeratorsDenominatorsDto::getYDenominator))
-                .collect(Collectors.toList());;
+        var transformedGeometry = metricsHelper.getPolygon(arguments);
 
-        String finalTransformedGeometry = transformedGeometry;
-
-        //find numerators for not empty layers
         List<NumeratorsDenominatorsDto> numeratorsDenominatorsForNotEmptyLayers =
-                Lists.partition(numeratorsDenominatorsDtos, 500).parallelStream()
-                        .map(sourceDtoList -> findNumeratorsDenominatorsForNotEmptyLayers(sourceDtoList, finalTransformedGeometry))
-                        .flatMap(Collection::stream)
-                        .sorted(Comparator.comparing(NumeratorsDenominatorsDto::getXLabel)
-                                .thenComparing(NumeratorsDenominatorsDto::getYLabel)
-                                .thenComparing(NumeratorsDenominatorsDto::getXNumerator)
-                                .thenComparing(NumeratorsDenominatorsDto::getXDenominator)
-                                .thenComparing(NumeratorsDenominatorsDto::getYNumerator)
-                                .thenComparing(NumeratorsDenominatorsDto::getYDenominator))
-                        .collect(Collectors.toList());
+                metricsHelper.getNumeratorsDenominatorsForNotEmptyLayers(arguments, transformedGeometry);
 
         //calculate correlation for every bivariate_axis in defined polygon that intersects h3
         var correlationRateList = Lists.partition(numeratorsDenominatorsForNotEmptyLayers, 500).parallelStream()
-                .map(sourceDtoList -> calculatePolygonCorrelations(sourceDtoList, finalTransformedGeometry))
+                .map(sourceDtoList -> calculatePolygonCorrelations(sourceDtoList, transformedGeometry))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
 
         //calculate avg correlation for xy
-        var avgCorrelationXY = calculateAvgCorrelationXY(correlationRateList);
+        var avgCorrelationXY = metricsHelper.calculateAvgMetricsXY(correlationRateList);
 
         //set avg correlation rate
         fillAvgCorrelation(correlationRateList, avgCorrelationXY);
@@ -87,7 +68,7 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
         return correlationRateList;
     }
 
-    private void fillParent(List<PolygonCorrelationRate> correlationRateList, List<List<String>> importantLayers) {
+    private void fillParent(List<PolygonMetrics> correlationRateList, List<List<String>> importantLayers) {
         GraphDto graph = createGraph(correlationRateList);
 
         Map<List<String>, List<String>> xChildParent = new HashMap<>();
@@ -98,11 +79,11 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
         setParent(correlationRateList, xChildParent, yChildParent);
     }
 
-    private GraphDto createGraph(List<PolygonCorrelationRate> correlationRateList) {
+    private GraphDto createGraph(List<PolygonMetrics> correlationRateList) {
         Map<NodeDto, Double> xAvgCorrelation = new HashMap<>();
         Map<NodeDto, Double> yAvgCorrelation = new HashMap<>();
         Map<NodeDto, Set<NodeDto>> graph = new HashMap<>();
-        for (PolygonCorrelationRate polygonCorrelationRate : correlationRateList) {
+        for (PolygonMetrics polygonCorrelationRate : correlationRateList) {
             if (Math.abs(polygonCorrelationRate.getCorrelation()) > highCorrelationLevel) {
                 NodeDto xNode = new NodeDto(polygonCorrelationRate.getX().getQuotient(), "x");
                 if (!xAvgCorrelation.containsKey(xNode)) {
@@ -161,9 +142,9 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
         }
     }
 
-    private void setParent(List<PolygonCorrelationRate> correlationRateList, Map<List<String>, List<String>> xChildParent,
+    private void setParent(List<PolygonMetrics> correlationRateList, Map<List<String>, List<String>> xChildParent,
                            Map<List<String>, List<String>> yChildParent) {
-        for (PolygonCorrelationRate polygonCorrelationRate : correlationRateList) {
+        for (PolygonMetrics polygonCorrelationRate : correlationRateList) {
             List<String> quotientX = polygonCorrelationRate.getX().getQuotient();
             List<String> quotientY = polygonCorrelationRate.getY().getQuotient();
             if (xChildParent.containsKey(quotientX)) {
@@ -258,18 +239,18 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
                 .orElse(new NodeDto(null, axis));
     }
 
-    private Comparator<PolygonCorrelationRate> correlationRateComparator() {
-        return Comparator.<PolygonCorrelationRate, Double>comparing(c -> c.getAvgCorrelationX() * c.getAvgCorrelationY()).reversed();
+    private Comparator<PolygonMetrics> correlationRateComparator() {
+        return Comparator.<PolygonMetrics, Double>comparing(c -> c.getAvgCorrelationX() * c.getAvgCorrelationY()).reversed();
     }
 
-    private List<PolygonCorrelationRate> calculatePolygonCorrelations(List<NumeratorsDenominatorsDto> sourceDtoList,
+    private List<PolygonMetrics> calculatePolygonCorrelations(List<NumeratorsDenominatorsDto> sourceDtoList,
                                                                       String transformedGeometry) {
-        List<PolygonCorrelationRate> result = new ArrayList<>();
+        List<PolygonMetrics> result = new ArrayList<>();
 
-        //run for every 500 bivariative_axis sourceDtoList size = 500 & get correlationList
+        //run for every 100 bivariative_axis sourceDtoList size = 100 & get correlationList
         List<Double> correlations = correlationRateService.getPolygonCorrelationRateStatisticsBatch(transformedGeometry, sourceDtoList);
         for (int i = 0; i < sourceDtoList.size(); i++) {
-            PolygonCorrelationRate polygonCorrelationRate = new PolygonCorrelationRate();
+            PolygonMetrics polygonCorrelationRate = new PolygonMetrics();
 
             ///combine them on Axis with quality, correlation & rate
             polygonCorrelationRate.setX(Axis.builder()
@@ -282,20 +263,11 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
                     .build());
             polygonCorrelationRate.setQuality(sourceDtoList.get(i).getQuality());
             polygonCorrelationRate.setCorrelation(correlations.get(i));
+            polygonCorrelationRate.setMetrics(correlations.get(i));
             polygonCorrelationRate.setRate(correlations.get(i));
             result.add(polygonCorrelationRate);
         }
         return result;
-    }
-
-    private String getPolygon(Map<String, Object> arguments) throws JsonProcessingException {
-        if (arguments.containsKey("polygon")) {
-            return geometryTransformer.transform(arguments.get("polygon").toString(), false);
-        }
-        if (arguments.containsKey("polygonV2")) {
-            return geometryTransformer.transform(arguments.get("polygonV2").toString(), false);
-        }
-        return null;
     }
 
     private List<List<String>> getImportantLayers(Map<String, Object> arguments) {
@@ -305,48 +277,11 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
         return new ArrayList<>();
     }
 
-    private void calculateDataForAvgCorrelation(PureNumeratorDenominatorDto numeratorDenominator,
-                                                PolygonCorrelationRate currentRate,
-                                                Map<PureNumeratorDenominatorDto, ForAvgCorrelationDto> result) {
-        if (!result.containsKey(numeratorDenominator)) {
-            result.put(numeratorDenominator, new ForAvgCorrelationDto(0.0, 0));
-        }
-        var forAvgCorrelationDto = result.get(numeratorDenominator);
-        forAvgCorrelationDto.setSum(forAvgCorrelationDto.getSum() + Math.abs(currentRate.getCorrelation()));
-        forAvgCorrelationDto.setNumber(forAvgCorrelationDto.getNumber() + 1);
-    }
-
-    private List<Map<PureNumeratorDenominatorDto, Double>> calculateAvgCorrelationXY(List<PolygonCorrelationRate> correlationRateList) {
-        Map<PureNumeratorDenominatorDto, ForAvgCorrelationDto> xMap = new HashMap<>();
-        Map<PureNumeratorDenominatorDto, ForAvgCorrelationDto> yMap = new HashMap<>();
-        for (PolygonCorrelationRate currentRate : correlationRateList) {
-            var xNum = currentRate.getX().getQuotient().get(0);
-            var xDen = currentRate.getX().getQuotient().get(1);
-            var yNum = currentRate.getY().getQuotient().get(0);
-            var yDen = currentRate.getY().getQuotient().get(1);
-            var numeratorDenominatorX = new PureNumeratorDenominatorDto(xNum, xDen);
-            var numeratorDenominatorY = new PureNumeratorDenominatorDto(yNum, yDen);
-
-            calculateDataForAvgCorrelation(numeratorDenominatorX, currentRate, xMap);
-            calculateDataForAvgCorrelation(numeratorDenominatorY, currentRate, yMap);
-        }
-
-        Map<PureNumeratorDenominatorDto, Double> xMapResult = xMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        entry -> entry.getValue().getSum() / entry.getValue().getNumber()));
-
-        Map<PureNumeratorDenominatorDto, Double> yMapResult = yMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        entry -> entry.getValue().getSum() / entry.getValue().getNumber()));
-
-        return List.of(xMapResult, yMapResult);
-    }
-
-    private void fillAvgCorrelation(List<PolygonCorrelationRate> correlationRateList,
+    private void fillAvgCorrelation(List<PolygonMetrics> correlationRateList,
                                     List<Map<PureNumeratorDenominatorDto, Double>> avgCorrelationList) {
         var xAvgCorrelationMap = avgCorrelationList.get(0);
         var yAvgCorrelationMap = avgCorrelationList.get(1);
-        for (PolygonCorrelationRate currentRate : correlationRateList) {
+        for (PolygonMetrics currentRate : correlationRateList) {
             var xNum = currentRate.getX().getQuotient().get(0);
             var xDen = currentRate.getX().getQuotient().get(1);
             var yNum = currentRate.getY().getQuotient().get(0);
@@ -356,18 +291,9 @@ public class CorrelationRateResolver implements GraphQLResolver<BivariateStatist
 
             currentRate.setAvgCorrelationX(xAvgCorrelationMap.get(numeratorDenominatorX));
             currentRate.setAvgCorrelationY(yAvgCorrelationMap.get(numeratorDenominatorY));
-        }
-    }
 
-    private List<NumeratorsDenominatorsDto> findNumeratorsDenominatorsForNotEmptyLayers(List<NumeratorsDenominatorsDto> numeratorsDenominatorsDtos,
-                                                                                        String transformedGeometry) {
-        Map<String, Boolean> numeratorsForNotEmptyLayers =
-                correlationRateService.getNumeratorsForNotEmptyLayersBatch(transformedGeometry, numeratorsDenominatorsDtos);
-        return numeratorsDenominatorsDtos.stream()
-                .filter(dto -> (numeratorsForNotEmptyLayers.containsKey(dto.getXNumerator())
-                        && numeratorsForNotEmptyLayers.get(dto.getXNumerator()))
-                        && (numeratorsForNotEmptyLayers.containsKey(dto.getYNumerator())
-                        && numeratorsForNotEmptyLayers.get(dto.getYNumerator())))
-                .collect(Collectors.toList());
+            currentRate.setAvgMetricsX(xAvgCorrelationMap.get(numeratorDenominatorX));
+            currentRate.setAvgMetricsY(yAvgCorrelationMap.get(numeratorDenominatorY));
+        }
     }
 }

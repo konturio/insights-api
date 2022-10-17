@@ -8,10 +8,10 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class CorrelationRate implements Serializable {
+public class Metrics implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = -5772207819296054714L;
+    private static final long serialVersionUID = 3963476990861283822L;
 
     private Axis x;
 
@@ -21,9 +21,18 @@ public class CorrelationRate implements Serializable {
 
     private Double quality;
 
+    @Deprecated
     private Double correlation;
 
+    @Deprecated
     private Double avgCorrelationX;
 
+    @Deprecated
     private Double avgCorrelationY;
+
+    private Double metrics;
+
+    private Double avgMetricsX;
+
+    private Double avgMetricsY;
 }

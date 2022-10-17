@@ -8,20 +8,23 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class PolygonCorrelationRate extends CorrelationRate implements Cloneable, Serializable {
+public class PolygonMetrics extends Metrics implements Cloneable, Serializable {
 
     @Serial
-    private static final long serialVersionUID = 3252610813500507438L;
+    private static final long serialVersionUID = 6508982706284997962L;
 
     @Override
-    public PolygonCorrelationRate clone() {
-        PolygonCorrelationRate result = new PolygonCorrelationRate();
+    public PolygonMetrics clone() {
+        PolygonMetrics result = new PolygonMetrics();
         try {
-            result = (PolygonCorrelationRate) super.clone();
+            result = (PolygonMetrics) super.clone();
         } catch (CloneNotSupportedException e) {
             result.setCorrelation(getCorrelation());
             result.setAvgCorrelationX(getAvgCorrelationX());
             result.setAvgCorrelationY(getAvgCorrelationY());
+            result.setMetrics(getMetrics());
+            result.setAvgMetricsX(getAvgMetricsX());
+            result.setAvgMetricsY(getAvgMetricsY());
             result.setRate(getRate());
             result.setQuality(getQuality());
         }

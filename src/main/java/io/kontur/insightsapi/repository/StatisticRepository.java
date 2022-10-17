@@ -5,7 +5,7 @@ import io.kontur.insightsapi.dto.NumeratorsDenominatorsDto;
 import io.kontur.insightsapi.mapper.*;
 import io.kontur.insightsapi.model.Axis;
 import io.kontur.insightsapi.model.BivariateStatistic;
-import io.kontur.insightsapi.model.PolygonCorrelationRate;
+import io.kontur.insightsapi.model.PolygonMetrics;
 import io.kontur.insightsapi.model.Statistic;
 import io.kontur.insightsapi.service.cacheable.CorrelationRateService;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +63,7 @@ public class StatisticRepository implements CorrelationRateService {
 
     private final AxisRowMapper axisRowMapper;
 
-    private final PolygonCorrelationRateRowMapper polygonCorrelationRateRowMapper;
+    private final PolygonMetricsRowMapper polygonMetricsRowMapper;
 
     private final CorrelationRateRowMapper correlationRateRowMapper;
 
@@ -87,8 +87,14 @@ public class StatisticRepository implements CorrelationRateService {
     }
 
     @Transactional(readOnly = true)
-    public List<PolygonCorrelationRate> getAllCorrelationRateStatistics() {
-        return jdbcTemplate.query(queryFactory.getSql(statisticCorrelation), polygonCorrelationRateRowMapper);
+    public List<PolygonMetrics> getAllCorrelationRateStatistics() {
+        return jdbcTemplate.query(queryFactory.getSql(statisticCorrelation), polygonMetricsRowMapper);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PolygonMetrics> getAllCovarianceRateStatistics() {
+        //TODO: the same as correlations, just for example. Will be changed in future
+        return jdbcTemplate.query(queryFactory.getSql(statisticCorrelation), polygonMetricsRowMapper);
     }
 
     @Transactional(readOnly = true)
@@ -110,6 +116,30 @@ public class StatisticRepository implements CorrelationRateService {
         paramSource.addValue("polygon", polygon);
         var requests = dtoList.stream()
                 .map(dto -> createCorrelationQueryString(dto.getXNumerator(), dto.getXDenominator(),
+                        dto.getYNumerator(), dto.getYDenominator())).toList();
+        var distinctFieldsRequests = dtoList.stream()
+                .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator(), dto.getXDenominator(), dto.getYDenominator()))
+                .distinct()
+                .toList();
+        var query = String.format(queryFactory.getSql(statisticCorrelationIntersect), StringUtils.join(distinctFieldsRequests, ","), StringUtils.join(requests, ","));
+        //it is important to disable jit in same stream with main request
+        jitDisable();
+        try {
+            return namedParameterJdbcTemplate.queryForObject(query, paramSource, correlationRateRowMapper);
+        } catch (Exception e) {
+            String error = String.format("Sql exception for geometry %s", polygon);
+            logger.error(error, e);
+            throw new IllegalArgumentException(error, e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Double> getPolygonCovarianceRateStatisticsBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
+        //TODO: the same as correlations, just for example. Will be changed in future
+        var paramSource = new MapSqlParameterSource();
+        paramSource.addValue("polygon", polygon);
+        var requests = dtoList.stream()
+                .map(dto -> createCovarianceQueryString(dto.getXNumerator(), dto.getXDenominator(),
                         dto.getYNumerator(), dto.getYDenominator())).toList();
         var distinctFieldsRequests = dtoList.stream()
                 .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator(), dto.getXDenominator(), dto.getYDenominator()))
@@ -169,6 +199,10 @@ public class StatisticRepository implements CorrelationRateService {
 
     private String createCorrelationQueryString(String xNum, String xDen, String yNum, String yDen) {
         return "corr(" + xNum + " / " + xDen + ", " + yNum + " / " + yDen + ") filter (where " + xDen + " != 0 and " + yDen + " != 0)";
+    }
+
+    private String createCovarianceQueryString(String xNum, String xDen, String yNum, String yDen) {
+        return "covar_samp(" + xNum + " / " + xDen + ", " + yNum + " / " + yDen + ") filter (where " + xDen + " != 0 and " + yDen + " != 0)";
     }
 
     public void jitDisable() {

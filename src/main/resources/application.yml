@@ -28,8 +28,8 @@ spring:
   cache:
     type: redis
     cache-names: urban-core, thermal-spot, population, osm-quality, humanitarian-impact, functions, correlation-rate-all,
-      correlation-rate-num-den, correlation-rate-polygon, correlation-rate-num-not-empty-layers, advanced-analytics-all,
-      advanced-analytics
+      metrics-num-den, correlation-rate-polygon, metrics-num-not-empty-layers, advanced-analytics-all,
+      advanced-analytics, covariance-rate-all, covariance-rate-polygon
     redis:
       time-to-live: 86400s
   redis:
@@ -45,7 +45,7 @@ springdoc:
 graphql:
   servlet:
     corsEnabled: false
-    tracing-enabled: metrics-only
+    tracing-enabled: false #11653
     actuator-metrics: true
     async:
       timeout: 1800s
@@ -97,6 +97,8 @@ cache:
   urban-core: true
   correlation-rate: true
   advanced-analytics: true
+  covariance-rate: true
+  metrics: true
 
 graphql-request:
   parser-options:

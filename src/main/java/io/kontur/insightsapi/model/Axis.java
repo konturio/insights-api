@@ -2,6 +2,8 @@ package io.kontur.insightsapi.model;
 
 import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 @Getter
@@ -9,7 +11,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Axis implements Cloneable {
+public class Axis implements Cloneable, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 7975909078058567603L;
 
     private String label;
 
@@ -32,6 +37,7 @@ public class Axis implements Cloneable {
             result.setQuality(this.quality);
             result.setSteps(this.steps);
             result.setQuotient(this.quotient);
+            result.setQuotients(this.quotients);
             result.setLabel(this.label);
             result.setParent(this.parent);
         }

@@ -15,50 +15,18 @@ cache:
     - docker
 
 stages:
-  - build
   - build-container
-  - deploy
   - deploy-k8s
 
-build:
-  extends: .default-job-settings
-  stage: build
-  script:
-    - mvn $MAVEN_CLI_OPTS clean install -U -Prelease
-    - mv target/*.zip .
-  artifacts:
-    name: insights-api-$CI_COMMIT_REF_SLUG
-    paths:
-      - '*.zip'
-
 build-container:
-  when: manual
   extends: .default-job-settings
   stage: build-container
   script:
     - mvn $MAVEN_CLI_OPTS clean install -DskipTests jib:build -U -Prelease
-  dependencies:
-    - build
   artifacts:
     name: helm-chart-with-actual-project-version
     paths:
       - './external/helm/insights-api/Chart.yaml'
-
-deploy-test:
-  tags:
-    - kontur
-    - ansible
-  stage: deploy
-  script: >
-    ansible-playbook -vD -e "version=$CI_COMMIT_REF_SLUG-$CI_PIPELINE_IID
-    path_to_dist=$(find $CI_PROJECT_DIR -maxdepth 1 -name \*.zip -print -quit)"
-    --limit=sonic_insights_api ansible/deploy.yml
-  environment:
-    name: TEST
-    url: 'https://test-apps.konturlabs.com/insights/'
-  when: manual
-  dependencies:
-    - build
 
 deploy-k8s-dev:
   variables:
@@ -133,37 +101,3 @@ deploy-k8s-prod:
     paths:
       - 'pre-manifests.yaml'
       - 'manifests.yaml'
-
-deploy-dev:
-  tags:
-    - kontur
-    - ansible
-  stage: deploy
-  script: >
-    ansible-playbook -vD -e "version=$CI_COMMIT_REF_SLUG-$CI_PIPELINE_IID
-    path_to_dist=$(find $CI_PROJECT_DIR -maxdepth 1 -name \*.zip -print -quit)"
-    --limit=zigzag_insights_api ansible/deploy.yml
-  environment:
-    name: DEV
-    url: 'https://test-apps02.konturlabs.com/insights/'
-  when: manual
-  dependencies:
-    - build
-
-deploy-prod:
-  tags:
-    - kontur
-    - ansible
-  stage: deploy
-  script: >
-    ansible-playbook -vD -e "version=$CI_COMMIT_REF_SLUG-$CI_PIPELINE_IID
-    path_to_dist=$(find $CI_PROJECT_DIR -maxdepth 1 -name \*.zip -print -quit)"
-    --limit=lima_insights_api ansible/deploy.yml
-  environment:
-    name: PROD
-    url: 'https://apps.kontur.io/insights/'
-  only:
-    - /^release-.*$/
-  when: manual
-  dependencies:
-    - build

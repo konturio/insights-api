@@ -1,9 +1,12 @@
-type CorrelationRate {
+type Metrics {
     x: Axis,
     y: Axis,
     rate: Float,
     quality: Float,
     correlation: Float,
+    metrics: Float,
     avgCorrelationX: Float,
-    avgCorrelationY: Float
+    avgCorrelationY: Float,
+    avgMetricsX: Float,
+    avgMetricsY: Float
 }

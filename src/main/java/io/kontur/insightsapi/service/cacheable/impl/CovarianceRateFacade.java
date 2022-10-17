@@ -4,7 +4,7 @@ import io.kontur.insightsapi.dto.NumeratorsDenominatorsDto;
 import io.kontur.insightsapi.model.PolygonMetrics;
 import io.kontur.insightsapi.repository.StatisticRepository;
 import io.kontur.insightsapi.service.cacheable.CacheEvictable;
-import io.kontur.insightsapi.service.cacheable.CorrelationRateService;
+import io.kontur.insightsapi.service.cacheable.CovarianceRateService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,28 +17,28 @@ import java.util.List;
 
 @Service
 @Primary
-@ConditionalOnProperty(prefix = "cache", name = "correlation-rate")
+@ConditionalOnProperty(prefix = "cache", name = "covariance-rate")
 @RequiredArgsConstructor
-public class CorrelationRateFacade implements CorrelationRateService, CacheEvictable {
+public class CovarianceRateFacade implements CovarianceRateService, CacheEvictable {
 
     private final StatisticRepository repository;
 
     @SneakyThrows
     @Override
-    @Cacheable(value = "correlation-rate-all", key = "'all'")
-    public List<PolygonMetrics> getAllCorrelationRateStatistics() {
-        return repository.getAllCorrelationRateStatistics();
+    @Cacheable(value = "covariance-rate-all", key = "'all'")
+    public List<PolygonMetrics> getAllCovarianceRateStatistics() {
+        return repository.getAllCovarianceRateStatistics();
     }
 
     @SneakyThrows
     @Override
-    @Cacheable(value = "correlation-rate-polygon", keyGenerator = "stringListKeyGenerator")
-    public List<Double> getPolygonCorrelationRateStatisticsBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
-        return repository.getPolygonCorrelationRateStatisticsBatch(polygon, dtoList);
+    @Cacheable(value = "covariance-rate-polygon", keyGenerator = "stringListKeyGenerator")
+    public List<Double> getPolygonCovarianceRateStatisticsBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
+        return repository.getPolygonCovarianceRateStatisticsBatch(polygon, dtoList);
     }
 
     @Override
-    @CacheEvict(value = {"correlation-rate-all", "correlation-rate-polygon"},
+    @CacheEvict(value = {"covariance-rate-all", "covariance-rate-polygon"},
             allEntries = true)
     public void evict() {
     }

@@ -25,7 +25,6 @@ jobs:
         id: get-cloned
         run: |-
           echo "::set-output name=SHA::$(git log -1 --format='%H')"
-          echo "::set-output name=REF::$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
 
       - uses: actions/setup-java@v3
         with:
@@ -48,3 +47,4 @@ jobs:
           echo '${{ secrets.NEXUS_DEPLOYER_PASS }}' | docker login nexus.kontur.io:8085 -u '${{ secrets.NEXUS_DEPLOYER }}' --password-stdin
 
           IMAGE_TAG="$TAG" mvn $MAVEN_CLI_OPTS clean install jib:build -U
+          echo "<h3>Docker image tag</h3> $TAG <br><br>" >> $GITHUB_STEP_SUMMARY

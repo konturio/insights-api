@@ -108,3 +108,6 @@ graphql-request:
 database:
   transposed:
     table: stat_h3_test
+  bivariate:
+    indicators:
+      table: bivariate_indicators_test

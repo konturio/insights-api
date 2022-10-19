@@ -34,6 +34,7 @@ public class IndicatorService {
     private final ObjectMapper objectMapper;
 
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
+        logger.info("IndicatorService: uploadIndicatorData method");
         try {
 
             FileItemIterator itemIterator = upload.getItemIterator(request);
@@ -43,14 +44,19 @@ public class IndicatorService {
             while (itemIterator.hasNext()) {
                 FileItemStream item = itemIterator.next();
                 if (!item.isFormField()) {
+                    logger.info("CSV file start uploading");
                     fileUploadResultDto = indicatorRepository.uploadCSVFileIntoTempTable(item);
+                    logger.info("CSV file uploading finished");
                 } else {
                     uuid = indicatorRepository.createIndicator(parseRequestFormDataParameters(item));
                 }
             }
 
             if (Strings.isNotEmpty(uuid) && Strings.isNotEmpty(fileUploadResultDto.getTempTableName())) {
-                return indicatorRepository.copyDataToStatH3(fileUploadResultDto, uuid);
+                logger.info("Start uploading data from " + fileUploadResultDto.getTempTableName() + " to stat_h3");
+                var result = indicatorRepository.copyDataToStatH3(fileUploadResultDto, uuid);
+                logger.info("Finished uploading data from " + fileUploadResultDto.getTempTableName() + " to stat_h3");
+                return result;
             } else {
                 logger.warn("Either file or parameters were absent from request");
                 return ResponseEntity.status(400).body("Either file or parameters were absent from request");
@@ -62,6 +68,10 @@ public class IndicatorService {
         } catch (SQLException | ConnectionException exception) {
             logger.error(exception.getMessage());
             return ResponseEntity.status(500).body(exception.getMessage());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            logger.error("FALL HERE");
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 

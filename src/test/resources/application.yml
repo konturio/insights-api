@@ -28,3 +28,11 @@ cache:
 graphql-request:
   parser-options:
     max-tokens: 0x7fffffff #Integer.MAX_VALUE
+
+# TODO: temp configuration, delete when we have final version of transposed table
+database:
+  transposed:
+    table: stat_h3_test
+  bivariate:
+    indicators:
+      table: bivariate_indicators_test

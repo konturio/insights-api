@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -110,7 +111,30 @@ public class StatisticRepository implements CorrelationRateService {
                         .quality(rs.getDouble("quality")).build());
     }
 
-    @Transactional(readOnly = true)
+//    @Transactional(readOnly = true)
+//    public List<Double> getPolygonCorrelationRateStatisticsBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
+//        var paramSource = new MapSqlParameterSource();
+//        paramSource.addValue("polygon", polygon);
+//        var requests = dtoList.stream()
+//                .map(dto -> createCorrelationQueryString(dto.getXNumerator(), dto.getXDenominator(),
+//                        dto.getYNumerator(), dto.getYDenominator())).toList();
+//        var distinctFieldsRequests = dtoList.stream()
+//                .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator(), dto.getXDenominator(), dto.getYDenominator()))
+//                .distinct()
+//                .toList();
+//        var query = String.format(queryFactory.getSql(statisticCorrelationIntersect), StringUtils.join(distinctFieldsRequests, ","), StringUtils.join(requests, ","));
+//        //it is important to disable jit in same stream with main request
+//        jitDisable();
+//        try {
+//            return namedParameterJdbcTemplate.queryForObject(query, paramSource, correlationRateRowMapper);
+//        } catch (Exception e) {
+//            String error = String.format("Sql exception for geometry %s", polygon);
+//            logger.error(error, e);
+//            throw new IllegalArgumentException(error, e);
+//        }
+//    }
+
+    @Transactional
     public List<Double> getPolygonCorrelationRateStatisticsBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
         var paramSource = new MapSqlParameterSource();
         paramSource.addValue("polygon", polygon);
@@ -121,11 +145,37 @@ public class StatisticRepository implements CorrelationRateService {
                 .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator(), dto.getXDenominator(), dto.getYDenominator()))
                 .distinct()
                 .toList();
-        var query = String.format(queryFactory.getSql(statisticCorrelationIntersect), StringUtils.join(distinctFieldsRequests, ","), StringUtils.join(requests, ","));
+
+        String typeName = "wrk_test_type_" + Math.abs(new Random().nextInt());
+        List<String> typeRequests = Lists.newArrayList();
+        for (String field : distinctFieldsRequests) {
+            typeRequests.add(field + " DOUBLE PRECISION");
+        }
+        jdbcTemplate.execute("create type " + typeName + " as (" + StringUtils.join(typeRequests, ",") + ")");
+
+        List<Double> result = Lists.newArrayList();
+        var query = String.format("""
+                with validated_input as (
+                    select calculate_validated_input(:polygon) geom
+                ), res as (
+                    select h3, zoom, o.geom, %s
+                    from wrk_stat_h3_json_all as o,
+                         (select ST_Subdivide(v.geom, 30) geom
+                          from validated_input v) as v,
+                         lateral jsonb_populate_record(null::%s, att) as t
+                    where st_intersects(o.geom, v.geom))
+                select
+                        %s
+                from res;
+                                    """, StringUtils.join(distinctFieldsRequests, ","), typeName, StringUtils.join(requests, ","));
+
+        //var query = String.format(queryFactory.getSql(statisticCorrelationIntersect), StringUtils.join(distinctFieldsRequests, ","), StringUtils.join(requests, ","));
         //it is important to disable jit in same stream with main request
         jitDisable();
         try {
-            return namedParameterJdbcTemplate.queryForObject(query, paramSource, correlationRateRowMapper);
+            result.addAll(namedParameterJdbcTemplate.queryForObject(query, paramSource, correlationRateRowMapper));
+            jdbcTemplate.execute("DROP TYPE IF EXISTS " + typeName);
+            return result;
         } catch (Exception e) {
             String error = String.format("Sql exception for geometry %s", polygon);
             logger.error(error, e);
@@ -157,19 +207,72 @@ public class StatisticRepository implements CorrelationRateService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public Map<String, Boolean> getNumeratorsForNotEmptyLayersBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList){
+//    @Transactional(readOnly = true)
+//    public Map<String, Boolean> getNumeratorsForNotEmptyLayersBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList){
+//        var paramSource = new MapSqlParameterSource();
+//        paramSource.addValue("polygon", polygon);
+//        var distinctFieldsRequests = dtoList.stream()
+//                .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator()))
+//                .distinct()
+//                .collect(Collectors.toList());
+//        List<String> requests = Lists.newArrayList();
+//        for (String field : distinctFieldsRequests) {
+//            requests.add("max(" + field + ")!=min(" + field + ") as result" + field);
+//        }
+//        var query = String.format(queryFactory.getSql(statisticCorrelationEmptylayerIntersect), StringUtils.join(requests, ","), StringUtils.join(distinctFieldsRequests, ","));
+//        //it is important to disable jit in same stream with main request
+//        jitDisable();
+//        Map<String, Boolean> result = new HashMap<>();
+//        try {
+//            namedParameterJdbcTemplate.query(query, paramSource, (rs -> {
+//                result.putAll(createResultMapForNotEmptyLayers(distinctFieldsRequests, rs));
+//            }));
+//        } catch (Exception e) {
+//            String error = String.format("Sql exception for geometry %s. Exception: %s", polygon, e.getMessage());
+//            logger.error(error);
+//            throw new IllegalArgumentException(error, e);
+//        }
+//        return result;
+//    }
+
+    @Transactional
+    public Map<String, Boolean> getNumeratorsForNotEmptyLayersBatch(String polygon, List<NumeratorsDenominatorsDto> dtoList) {
         var paramSource = new MapSqlParameterSource();
         paramSource.addValue("polygon", polygon);
         var distinctFieldsRequests = dtoList.stream()
                 .flatMap(dto -> Stream.of(dto.getXNumerator(), dto.getYNumerator()))
                 .distinct()
                 .collect(Collectors.toList());
+
+        String typeName = "wrk_test_type_" + Math.abs(new Random().nextInt());
         List<String> requests = Lists.newArrayList();
         for (String field : distinctFieldsRequests) {
-            requests.add("max(" + field + ")!=min(" + field + ") as result" + field);
+            requests.add(field + " DOUBLE PRECISION");
         }
-        var query = String.format(queryFactory.getSql(statisticCorrelationEmptylayerIntersect), StringUtils.join(requests, ","), StringUtils.join(distinctFieldsRequests, ","));
+        jdbcTemplate.execute("create type " + typeName + " as (" + StringUtils.join(requests, ",") + ")");
+
+        List<String> maxMinRequests = Lists.newArrayList();
+        for (String field : distinctFieldsRequests) {
+            maxMinRequests.add("max(" + field + ")!=min(" + field + ") as result" + field);
+        }
+
+        var query = String.format(
+                """
+                        with validated_input as (
+                            select calculate_validated_input(:polygon) geom
+                        ), res as (
+                            select h3, zoom, o.geom, %s
+                            from wrk_stat_h3_json_all as o,
+                                 (select ST_Subdivide(v.geom, 30) geom
+                                  from validated_input v) as v,
+                                 lateral jsonb_populate_record(null::%s, att) as t
+                            where st_intersects(o.geom, v.geom))
+                        select
+                                %s
+                            from res;
+                        """, StringUtils.join(distinctFieldsRequests, ","), typeName, StringUtils.join(maxMinRequests, ",")
+        );
+        //var query = String.format(queryFactory.getSql(statisticCorrelationEmptylayerIntersect), StringUtils.join(requests, ","), StringUtils.join(distinctFieldsRequests, ","));
         //it is important to disable jit in same stream with main request
         jitDisable();
         Map<String, Boolean> result = new HashMap<>();
@@ -182,6 +285,9 @@ public class StatisticRepository implements CorrelationRateService {
             logger.error(error);
             throw new IllegalArgumentException(error, e);
         }
+
+
+        jdbcTemplate.execute("DROP TYPE IF EXISTS " + typeName);
         return result;
     }
 
@@ -203,6 +309,14 @@ public class StatisticRepository implements CorrelationRateService {
 
     private String createCovarianceQueryString(String xNum, String xDen, String yNum, String yDen) {
         return "covar_samp(" + xNum + " / " + xDen + ", " + yNum + " / " + yDen + ") filter (where " + xDen + " != 0 and " + yDen + " != 0)";
+    }
+
+    private void createType(List<String> distinctFieldsRequests) {
+        List<String> requests = Lists.newArrayList();
+        for (String field : distinctFieldsRequests) {
+            requests.add(field + " DOUBLE PRECISION");
+        }
+        jdbcTemplate.execute("create type wrk_test_type_test as (" + StringUtils.join(requests, ",") + ")");
     }
 
     public void jitDisable() {

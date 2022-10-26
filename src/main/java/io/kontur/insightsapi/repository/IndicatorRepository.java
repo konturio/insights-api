@@ -70,7 +70,7 @@ public class IndicatorRepository {
         logger.info("IndicatorRepository: uploadCSVFileIntoTempTable");
         String tempTableName = generateTempTableName();
 
-        String tempTableQuery = String.format("CREATE TEMPORARY TABLE %s (h3 h3index, value double precision)", tempTableName);
+        String tempTableQuery = String.format("CREATE TEMPORARY TABLE %s (h3 h3index, value double precision) ON COMMIT PRESERVE ROWS", tempTableName);
         jdbcTemplate.update(tempTableQuery);
 
         logger.info("TEMP table is created with the name " + tempTableName);

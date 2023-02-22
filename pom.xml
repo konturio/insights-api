@@ -33,7 +33,7 @@
         <jts2geojson.version>0.17.0</jts2geojson.version>
         <guava.version>31.1-jre</guava.version>
         <postgresql-testcontainers.version>1.17.4</postgresql-testcontainers.version>
-        <commons-fileupload.version>1.4</commons-fileupload.version>
+        <commons-fileupload.version>1.5</commons-fileupload.version>
 
         <micrometer-registry-prometheus.version>1.9.4</micrometer-registry-prometheus.version>
 

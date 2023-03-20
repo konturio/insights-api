@@ -58,9 +58,12 @@ public class TileService {
         return tileRepository.getBivariateTileMvt(z, x, y, indicators);
     }
 
+//    public String calculateEtagValue() {
+//        return "";
+//    }
+
     private boolean checkIndicatorsList(List<String> indicatorsList) {
         var bivariateIndicators = tileRepository.getAllBivariateIndicators();
         return bivariateIndicators.containsAll(indicatorsList);
     }
-
 }

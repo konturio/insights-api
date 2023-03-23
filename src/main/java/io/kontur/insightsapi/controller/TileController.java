@@ -35,39 +35,53 @@ public class TileController {
                     @ApiResponse(responseCode = "400", description = "Bad Request"),
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping(value = "/bivariate/v1/{z}/{x}/{y}.mvt", produces = "application/vnd.mapbox-vector-tile")
-    public ResponseEntity<byte[]> getBivariateTileMvt(@PathVariable Integer z, @PathVariable Integer x,
+    public ResponseEntity<byte[]> getBivariateTileMvt(@PathVariable Integer z,
+                                                      @PathVariable Integer x,
                                                       @PathVariable Integer y,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
-        if (z < 0 || z > 8 || x < 0 || x > (Math.pow(2, z) - 1) || y < 0 || y > (Math.pow(2, z) - 1)) {
+        if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);
         }
+
+        // Cache invalidation logic in case Expires and ETag headers are used
 //        if (request.checkNotModified(tileService.calculateEtagValue())) {
 //            return null;
 //        }
+
         log.info("Cache expired. Refreshing tiles");
         return ResponseEntity.ok()
+                // As data is updated every day, max-age is set to 1 day
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
                 //.header("Expires", "")
                 //.eTag(tileService.calculateEtagValue())
                 .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
     }
 
-    @Operation(summary = "Get bivariate mvt tile using z, x, y and list of indicator.",
+    @Operation(summary = "Get bivariate mvt tile using z, x, y and list of indicators.",
             tags = {"Tiles"},
-            description = "Get bivariate mvt tile using z, x, y and list of indicator.",
+            description = "Get bivariate mvt tile using z, x, y and list of indicators.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Successful operation",
                             content = @Content(mediaType = "application/vnd.mapbox-vector-tile")),
                     @ApiResponse(responseCode = "400", description = "Bad Request"),
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping(value = "/bivariate/v2/{z}/{x}/{y}.mvt", produces = "application/vnd.mapbox-vector-tile")
-    public byte[] getBivariateTileMvtV2(@PathVariable Integer z, @PathVariable Integer x, @PathVariable Integer y,
-                                        @RequestParam(required = false) List<String> indicatorsList) {
-        if (z < 0 || z > 8 || x < 0 || x > (Math.pow(2, z) - 1) || y < 0 || y > (Math.pow(2, z) - 1)) {
-            return new byte[0];
+    public ResponseEntity<byte[]> getBivariateTileMvtV2(@PathVariable Integer z,
+                                                        @PathVariable Integer x,
+                                                        @PathVariable Integer y,
+                                                        @RequestParam(required = false) List<String> indicatorsList) {
+        if (isRequestInvalid(z, x, y)) {
+            return ResponseEntity.ok()
+                    .body(new byte[0]);
         }
-        return tileService.getBivariateTileMvtIndicatorsList(z, x, y, indicatorsList);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .body(tileService.getBivariateTileMvtIndicatorsList(z, x, y, indicatorsList));
+    }
+
+    private boolean isRequestInvalid(Integer z, Integer x, Integer y) {
+        return (z < 0 || z > 8 || x < 0 || x > (Math.pow(2, z) - 1) || y < 0 || y > (Math.pow(2, z) - 1));
     }
 }

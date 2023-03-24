@@ -9,9 +9,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +26,12 @@ public class BivariateIndicatorRowMapper implements RowMapper<BivariateIndicator
         bivariateIndicatorDto.setLabel(resultSet.getString(BivariateIndicatorsColumns.param_label.name()));
         bivariateIndicatorDto.setCopyrights(resultSet.getString(BivariateIndicatorsColumns.copyrights.name()) == null
                 ? null
-                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.copyrights.name()), new TypeReference<List<String>>(){}));
+                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.copyrights.name()), new TypeReference<>() {
+        }));
         bivariateIndicatorDto.setDirection(resultSet.getString(BivariateIndicatorsColumns.direction.name()) == null
                 ? null
-                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.direction.name()), new TypeReference<List<List<String>>>(){}));
+                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.direction.name()), new TypeReference<>() {
+        }));
         bivariateIndicatorDto.setIsBase(resultSet.getBoolean(BivariateIndicatorsColumns.is_base.name()));
         bivariateIndicatorDto.setUuid(resultSet.getString(BivariateIndicatorsColumns.param_uuid.name()));
         bivariateIndicatorDto.setOwner(resultSet.getString(BivariateIndicatorsColumns.owner.name()));
@@ -39,14 +39,16 @@ public class BivariateIndicatorRowMapper implements RowMapper<BivariateIndicator
         bivariateIndicatorDto.setIsPublic(resultSet.getBoolean(BivariateIndicatorsColumns.is_public.name()));
         bivariateIndicatorDto.setAllowedUsers(resultSet.getString(BivariateIndicatorsColumns.allowed_users.name()) == null
                 ? null
-                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.allowed_users.name()), new TypeReference<List<String>>(){}));
+                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.allowed_users.name()), new TypeReference<>() {
+        }));
         bivariateIndicatorDto.setDate(resultSet.getObject(BivariateIndicatorsColumns.date.name(), OffsetDateTime.class));
         bivariateIndicatorDto.setDescription(resultSet.getString(BivariateIndicatorsColumns.description.name()));
         bivariateIndicatorDto.setCoverage(resultSet.getString(BivariateIndicatorsColumns.coverage.name()));
         bivariateIndicatorDto.setUpdateFrequency(resultSet.getString(BivariateIndicatorsColumns.update_frequency.name()));
         bivariateIndicatorDto.setApplication(resultSet.getString(BivariateIndicatorsColumns.application.name()) == null
                 ? null
-                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.application.name()), new TypeReference<List<String>>(){}));
+                : objectMapper.readValue(resultSet.getString(BivariateIndicatorsColumns.application.name()), new TypeReference<>() {
+        }));
         bivariateIndicatorDto.setUnitId(resultSet.getString(BivariateIndicatorsColumns.unit_id.name()));
         bivariateIndicatorDto.setLastUpdated(resultSet.getObject(BivariateIndicatorsColumns.last_updated.name(), OffsetDateTime.class));
         return bivariateIndicatorDto;

@@ -1,5 +1,6 @@
 package io.kontur.insightsapi.controller;
 
+import io.kontur.insightsapi.repository.MetadataRepository;
 import io.kontur.insightsapi.service.cacheable.CacheEvictable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.List;
 
 @Tag(name = "Cache", description = "Cache API")
@@ -20,6 +22,8 @@ public class CacheController {
 
     private final List<CacheEvictable> cacheEvictables;
 
+    private final MetadataRepository metadataRepository;
+
     @Operation(summary = "Clean all caches.",
             tags = {"Cache"},
             description = "Clean all caches.",
@@ -29,7 +33,8 @@ public class CacheController {
                     @ApiResponse(responseCode = "400", description = "Bad Request"),
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping("/cleanUp")
-    public void cleanCaches(){
+    public void cleanCaches() {
+        metadataRepository.setDataLastUpdateTime(Instant.now());
         cacheEvictables.forEach(CacheEvictable::evict);
     }
 }

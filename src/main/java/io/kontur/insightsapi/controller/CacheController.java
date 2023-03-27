@@ -1,6 +1,6 @@
 package io.kontur.insightsapi.controller;
 
-import io.kontur.insightsapi.repository.MetadataRepository;
+import io.kontur.insightsapi.service.IndicatorService;
 import io.kontur.insightsapi.service.cacheable.CacheEvictable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,7 +22,7 @@ public class CacheController {
 
     private final List<CacheEvictable> cacheEvictables;
 
-    private final MetadataRepository metadataRepository;
+    private final IndicatorService indicatorService;
 
     @Operation(summary = "Clean all caches.",
             tags = {"Cache"},
@@ -34,7 +34,8 @@ public class CacheController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping("/cleanUp")
     public void cleanCaches() {
-        metadataRepository.setDataLastUpdateTime(Instant.now());
+        indicatorService.updateIndicatorsLastUpdateDate(Instant.now());
+
         cacheEvictables.forEach(CacheEvictable::evict);
     }
 }

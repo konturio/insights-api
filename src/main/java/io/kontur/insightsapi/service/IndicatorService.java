@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -122,6 +123,14 @@ public class IndicatorService {
             //TODO: update state to previous value if committed in future
             return logAndReturnErrorWithMessage(500, exception.getMessage());
         }
+    }
+
+    public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {
+        indicatorRepository.updateIndicatorsLastUpdateDate(lastUpdated);
+    }
+
+    public Instant getIndicatorsLastUpdateDate() {
+        return indicatorRepository.getIndicatorsLastUpdateDate();
     }
 
     private void validateParameters(BivariateIndicatorDto bivariateIndicatorDto) {

@@ -1,6 +1,6 @@
 package io.kontur.insightsapi.controller;
 
-import io.kontur.insightsapi.repository.MetadataRepository;
+import io.kontur.insightsapi.service.IndicatorService;
 import io.kontur.insightsapi.service.TileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,7 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 @Tag(name = "Tiles", description = "Tiles API")
 @RestController
@@ -35,7 +34,7 @@ public class TileController {
 
     private final TileService tileService;
 
-    private final MetadataRepository metadataRepository;
+    private final IndicatorService indicatorService;
 
     @Operation(summary = "Get bivariate mvt tile using z, x, y and indicator class.",
             tags = {"Tiles"},
@@ -55,16 +54,17 @@ public class TileController {
             return ResponseEntity.ok()
                     .body(new byte[0]);
         }
-        Instant dataLastUpdateTime = metadataRepository.getDataLastUpdateTime();
-        Instant expirationTime = dataLastUpdateTime.plus(1, ChronoUnit.DAYS);
+        Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        Instant expirationTime = lastUpdated.plus(1, ChronoUnit.DAYS);
+        // if If-None-Match header is present and set to the ETag that is still valid, return 304 Not Modified
         if (request.checkNotModified(expirationTime.toString())) {
             return null;
         }
-        log.info("Cache expired. Refreshing tiles");
+        log.info("Cache expired and data has been updated. Refreshing tiles");
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.empty().cachePublic())
                 .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))
-                .eTag(dataLastUpdateTime.toString())
+                .eTag(lastUpdated.toString())
                 .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
     }
 
@@ -80,13 +80,23 @@ public class TileController {
     public ResponseEntity<byte[]> getBivariateTileMvtV2(@PathVariable Integer z,
                                                         @PathVariable Integer x,
                                                         @PathVariable Integer y,
-                                                        @RequestParam(required = false) List<String> indicatorsList) {
+                                                        @RequestParam(required = false) List<String> indicatorsList,
+                                                        WebRequest request) {
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);
         }
+        Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        Instant expirationTime = lastUpdated.plus(1, ChronoUnit.DAYS);
+        // if If-None-Match header is present and set to the ETag that is still valid, return 304 Not Modified
+        if (request.checkNotModified(expirationTime.toString())) {
+            return null;
+        }
+        log.info("Cache expired and data has been updated. Refreshing tiles");
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic())
+                .cacheControl(CacheControl.empty().cachePublic())
+                .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))
+                .eTag(lastUpdated.toString())
                 .body(tileService.getBivariateTileMvtIndicatorsList(z, x, y, indicatorsList));
     }
 

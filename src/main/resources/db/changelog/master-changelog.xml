@@ -7,6 +7,5 @@
 
     <include  file="map_to_geometry_obj.sql" relativeToChangelogFile="true"/>
     <include  file="calculate_area_resolution_performance_fix.sql" relativeToChangelogFile="true"/>
-    <include  file="14817_enable_http_caching_for_tiles.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

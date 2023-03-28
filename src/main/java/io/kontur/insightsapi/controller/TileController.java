@@ -117,6 +117,7 @@ public class TileController {
                 .body(tileService.getBivariateTileMvtIndicatorsList(z, x, y, indicatorsList));
     }
 
+    // TODO remove z > 8 check once US 1386 is done
     private boolean isRequestInvalid(Integer z, Integer x, Integer y) {
         return (z < 0 || z > 8 || x < 0 || x > (Math.pow(2, z) - 1) || y < 0 || y > (Math.pow(2, z) - 1));
     }

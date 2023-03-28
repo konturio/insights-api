@@ -32,7 +32,6 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -244,7 +243,8 @@ public class IndicatorRepository {
     }
 
     public Instant getIndicatorsLastUpdateDate() {
-        return Objects.requireNonNull(jdbcTemplate.queryForObject(String.format("SELECT MAX(last_updated) FROM %s",
-                bivariateIndicatorsTestTableName), Timestamp.class)).toInstant();
+        Timestamp lastUpdated = jdbcTemplate.queryForObject(String.format("SELECT MAX(last_updated) FROM %s",
+                bivariateIndicatorsTestTableName), Timestamp.class);
+        return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
 }

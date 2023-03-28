@@ -56,6 +56,10 @@ public class TileController {
                     .body(new byte[0]);
         }
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        if (lastUpdated == null) {
+            return ResponseEntity.ok()
+                    .body(new byte[0]);
+        }
         Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
         String eTag = lastUpdated.toString();
 
@@ -96,6 +100,10 @@ public class TileController {
                     .body(new byte[0]);
         }
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        if (lastUpdated == null) {
+            return ResponseEntity.ok()
+                    .body(new byte[0]);
+        }
         Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
         String eTag = lastUpdated.toString();
 

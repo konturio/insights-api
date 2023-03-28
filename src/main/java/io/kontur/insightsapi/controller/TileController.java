@@ -10,14 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 
@@ -55,16 +56,24 @@ public class TileController {
                     .body(new byte[0]);
         }
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
-        Instant expirationTime = lastUpdated.plus(1, ChronoUnit.DAYS);
+        Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
+        String eTag = lastUpdated.toString();
+
         // if If-None-Match header is present and set to the ETag that is still valid, return 304 Not Modified
-        if (request.checkNotModified(expirationTime.toString())) {
-            return null;
+        String ifNoneMatch = request.getHeader("If-None-Match");
+        if (ifNoneMatch != null && ifNoneMatch.equals(eTag)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                    .cacheControl(CacheControl.empty().cachePublic())
+                    .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))
+                    .eTag(eTag)
+                    .build();
         }
-        log.info("Cache expired and data has been updated. Refreshing tiles");
+
+        log.info("Data has been updated. Refreshing tiles");
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.empty().cachePublic())
                 .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))
-                .eTag(lastUpdated.toString())
+                .eTag(eTag)
                 .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
     }
 
@@ -87,12 +96,20 @@ public class TileController {
                     .body(new byte[0]);
         }
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
-        Instant expirationTime = lastUpdated.plus(1, ChronoUnit.DAYS);
+        Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
+        String eTag = lastUpdated.toString();
+
         // if If-None-Match header is present and set to the ETag that is still valid, return 304 Not Modified
-        if (request.checkNotModified(expirationTime.toString())) {
-            return null;
+        String ifNoneMatch = request.getHeader("If-None-Match");
+        if (ifNoneMatch != null && ifNoneMatch.equals(eTag)) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                    .cacheControl(CacheControl.empty().cachePublic())
+                    .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))
+                    .eTag(eTag)
+                    .build();
         }
-        log.info("Cache expired and data has been updated. Refreshing tiles");
+
+        log.info("Data has been updated. Refreshing tiles");
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.empty().cachePublic())
                 .header("Expires", HTTP_TIME_FORMATTER.format(expirationTime))

@@ -247,4 +247,9 @@ public class IndicatorRepository {
                 bivariateIndicatorsTestTableName), Timestamp.class);
         return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
+
+    public void updateIndicatorState(String uuid, String state) {
+        jdbcTemplate.update(String.format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
+                bivariateIndicatorsTestTableName, state, uuid));
+    }
 }

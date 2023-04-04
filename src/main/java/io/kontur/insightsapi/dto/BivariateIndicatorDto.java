@@ -2,13 +2,11 @@ package io.kontur.insightsapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -43,7 +41,7 @@ public class BivariateIndicatorDto {
     private String owner;
 
     @JsonProperty(value = "state")
-    private String state;
+    private IndicatorState state;
 
     @JsonProperty(value = "isPublic", required = true, defaultValue = "false")
     @NotNull(message = "Incorrect type of is_public field, true/false expected.")
@@ -72,5 +70,4 @@ public class BivariateIndicatorDto {
 
     @JsonProperty(value = "lastUpdated")
     private OffsetDateTime lastUpdated;
-
 }

@@ -1,7 +1,6 @@
 package io.kontur.insightsapi.controller;
 
 import io.kontur.insightsapi.service.IndicatorProcessHelper;
-import io.kontur.insightsapi.service.IndicatorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

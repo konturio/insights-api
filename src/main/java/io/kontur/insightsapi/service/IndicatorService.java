@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.dto.FileUploadResultDto;
+import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
 import io.kontur.insightsapi.repository.IndicatorRepository;
 import io.kontur.insightsapi.service.auth.AuthService;
@@ -47,6 +48,7 @@ public class IndicatorService {
         FileUploadResultDto fileUploadResultDto = new FileUploadResultDto();
         boolean update = false;
 
+        // TODO: extract and validate parameters in a different way. Service/repository shouldn't return ResponseEntity
         try {
 
             BivariateIndicatorDto incomingBivariateIndicatorDto;
@@ -74,7 +76,6 @@ public class IndicatorService {
                         update = true;
                     }
 
-                    //TODO: here probably make a 'state' update inside inner transaction so new state being committed
                     uuid = indicatorRepository.createOrUpdateIndicator(incomingBivariateIndicatorDto, owner, update);
 
                     itemIndex++;
@@ -125,12 +126,20 @@ public class IndicatorService {
         }
     }
 
+    public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
+        return indicatorRepository.getIndicatorByUuid(uuid);
+    }
+
     public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {
         indicatorRepository.updateIndicatorsLastUpdateDate(lastUpdated);
     }
 
     public Instant getIndicatorsLastUpdateDate() {
         return indicatorRepository.getIndicatorsLastUpdateDate();
+    }
+
+    public void updateIndicatorState(String uuid, IndicatorState state) {
+        indicatorRepository.updateIndicatorState(uuid, state);
     }
 
     private void validateParameters(BivariateIndicatorDto bivariateIndicatorDto) {

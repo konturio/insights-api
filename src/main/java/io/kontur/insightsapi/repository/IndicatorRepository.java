@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.dto.FileUploadResultDto;
+import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
 import io.kontur.insightsapi.exception.ConnectionException;
 import io.kontur.insightsapi.exception.TableDataCopyException;
@@ -72,7 +73,6 @@ public class IndicatorRepository {
         var paramSource = initParams(bivariateIndicatorDto, owner);
         String bivariateIndicatorsQuery;
 
-        //TODO: change 'state' column probably here in future
         if (update) {
             bivariateIndicatorsQuery = String.format(queryFactory.getSql(updateBivariateIndicators),
                     bivariateIndicatorsTestTableName, owner);
@@ -248,8 +248,8 @@ public class IndicatorRepository {
         return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
 
-    public void updateIndicatorState(String uuid, String state) {
+    public void updateIndicatorState(String uuid, IndicatorState state) {
         jdbcTemplate.update(String.format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
-                bivariateIndicatorsTestTableName, state, uuid));
+                bivariateIndicatorsTestTableName, state.name(), uuid));
     }
 }

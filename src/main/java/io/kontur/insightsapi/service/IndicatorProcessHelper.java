@@ -47,9 +47,17 @@ public class IndicatorProcessHelper {
                 String uuid = response.getBody().substring(response.getBody().length() - UUID_STRING_LENGTH);
                 List<BivariateIndicatorDto> incomingBivariateIndicatorDtoAsList =
                         List.of(indicatorService.getIndicatorByUuid(uuid));
+
                 logger.info("Start calculations for indicator with uuid {}", uuid);
+                long calculationStartTime = System.currentTimeMillis();
+
                 axisService.createAxis(incomingBivariateIndicatorDtoAsList);
-                logger.info("Calculations for indicator with uuid {} have been done successfully", uuid);
+
+                long calculationEndTime = System.currentTimeMillis();
+                long calculationTimeInSeconds = (calculationEndTime - calculationStartTime) / 1000;
+                logger.info("Calculations for indicator with uuid {} have been done successfully and took {}", uuid,
+                        String.format("%02d hours %02d minutes %02d seconds", calculationTimeInSeconds / 3600,
+                                (calculationTimeInSeconds % 3600) / 60, (calculationTimeInSeconds % 60)));
                 indicatorService.updateIndicatorState(uuid, IndicatorState.READY);
             }
         });

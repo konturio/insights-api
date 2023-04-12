@@ -72,6 +72,7 @@ public class IndicatorRepository {
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
     }
 
+    @Transactional
     public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
         try (CSVReader reader = new CSVReader(new InputStreamReader(file.openStream()))) {
             if (update) {

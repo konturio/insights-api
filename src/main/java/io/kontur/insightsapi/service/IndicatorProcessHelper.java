@@ -43,8 +43,8 @@ public class IndicatorProcessHelper {
 
         executor.submit(() -> {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null
-                    && response.getBody().length() >= UUID_STRING_LENGTH) {
-                String uuid = response.getBody().substring(response.getBody().length() - UUID_STRING_LENGTH);
+                    && response.getBody().length() == UUID_STRING_LENGTH) {
+                String uuid = response.getBody();
                 List<BivariateIndicatorDto> incomingBivariateIndicatorDtoAsList =
                         List.of(indicatorService.getIndicatorByUuid(uuid));
 

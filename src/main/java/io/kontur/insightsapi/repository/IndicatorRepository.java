@@ -2,50 +2,38 @@ package io.kontur.insightsapi.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.opencsv.CSVReader;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
-import io.kontur.insightsapi.dto.FileUploadResultDto;
 import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
-import io.kontur.insightsapi.exception.ConnectionException;
-import io.kontur.insightsapi.exception.TableDataCopyException;
+import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.fileupload.FileItemStream;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.core.BaseConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.io.IOException;
-import java.io.InputStream;
-import java.sql.Connection;
+import java.io.InputStreamReader;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
 public class IndicatorRepository {
 
-    private static final Logger logger = LoggerFactory.getLogger(IndicatorRepository.class);
     private final JdbcTemplate jdbcTemplate;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     private final ObjectMapper objectMapper;
-
-    private final DataSource dataSource;
 
     @Value("classpath:/sql.queries/insert_bivariate_indicators.sql")
     private Resource insertBivariateIndicators;
@@ -84,93 +72,40 @@ public class IndicatorRepository {
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
     }
 
-    //TODO: get rid of intermediate table. InputStream with a CSV file from request have to be adjusted with an UUID of indicator for every row and have to be uploaded to stat_h3_transposed straightaway
-    public FileUploadResultDto uploadCSVFileIntoTempTable(FileItemStream file) throws IOException, ConnectionException {
-
-        String tempTableName = generateTempTableName();
-
-        String tempTableQuery = String.format("CREATE UNLOGGED TABLE %s (h3 h3index, indicator_value double " +
-                "precision, CONSTRAINT valid_cell CHECK (h3_is_valid_cell(h3::h3index)))", tempTableName);
-        jdbcTemplate.update(tempTableQuery);
-
-        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", tempTableName);
-
-        long numberOfInsertedRows;
-
-        try (InputStream fileInputStream = file.openStream()) {
-            Connection connection = DataSourceUtils.getConnection(dataSource);
-
-            if (connection.isWrapperFor(Connection.class)) {
-
-                CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                numberOfInsertedRows = copyManager.copyIn(copyManagerQuery, fileInputStream);
-                return new FileUploadResultDto(tempTableName, numberOfInsertedRows, null);
-            } else {
-                logger.error("Could not connect to Copy Manager");
-                throw new ConnectionException("Connection was closed unpredictably. Can not obtain connection for " +
-                        "CopyManager");
-            }
-        } catch (Exception e) {
-            return new FileUploadResultDto(null, 0,
-                    adjustMessageForKnownExceptions(e.getMessage()));
-        }
-    }
-
-    private String adjustMessageForKnownExceptions(String message) {
-        String tempMessage = message.substring(message.indexOf(", line") + 2, message.indexOf(", column",
-                message.indexOf(", line")));
-        if (message.contains("stringToH3")) {
-            return String.format("Unable to represent %s from the file as H3", tempMessage);
-        } else if (message.contains("valid_cell")) {
-            return String.format("Incorrect H3index found in the file: %s", message.substring(message.indexOf(", line")
-                    + 2, message.indexOf(": \"", message.indexOf(", line"))));
-        } else if (message.contains("double precision")) {
-            return String.format("Incorrect value found in the file: %s", tempMessage);
-        } else {
-            return message;
-        }
-    }
-
-    public ResponseEntity<String> copyDataToStatH3(FileUploadResultDto fileUploadResultDto, String uuid, boolean update)
-            throws TableDataCopyException {
-        try {
+    public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
+        try (CSVReader reader = new CSVReader(new InputStreamReader(file.openStream()))) {
             if (update) {
                 jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
                         transposedTableName, uuid));
             }
-            var copyDataFromTempToStatH3WithUuidQuery = String.format("INSERT INTO %s select h3, '%s', " +
-                    "indicator_value from %s", transposedTableName, uuid, fileUploadResultDto.getTempTableName());
-            long numberOfCopiedRows = jdbcTemplate.update(copyDataFromTempToStatH3WithUuidQuery);
+            var query = String.format("INSERT INTO %s (h3, indicator_uuid, indicator_value) " +
+                    "VALUES (?, '%s', ?)", transposedTableName, uuid);
 
-            deleteTempTable(fileUploadResultDto.getTempTableName());
+            int batchSize = 1000;
+            int count = 0;
+            List<Object[]> batchArgs = new ArrayList<>();
 
-            if (numberOfCopiedRows != fileUploadResultDto.getNumberOfUploadedRows()) {
-                logger.warn(String.format("No errors during uploading occurred but records number validation " +
-                        "did not pass: uploaded from CSV = %s, number of records put in database = %s, " +
-                        "uuid = %s", fileUploadResultDto.getNumberOfUploadedRows(), numberOfCopiedRows, uuid));
-                return ResponseEntity.ok().body(String.format("No errors during uploading occurred but records " +
-                                "number validation did not pass: uploaded from CSV = %s, number of records put in " +
-                                "database = %s, uuid = %s", fileUploadResultDto.getNumberOfUploadedRows(),
-                        numberOfCopiedRows, uuid));
+            String[] row;
+            while ((row = reader.readNext()) != null) {
+                Object[] rowArgs = new Object[]{row[0], row[1]};
+                batchArgs.add(rowArgs);
+                count++;
+                if (count % batchSize == 0) {
+                    jdbcTemplate.batchUpdate(query, batchArgs, new int[]{Types.OTHER, Types.DOUBLE});
+                    batchArgs.clear();
+                }
             }
-
-            return ResponseEntity.ok().body(uuid);
+            if (!batchArgs.isEmpty()) {
+                jdbcTemplate.batchUpdate(query, batchArgs, new int[]{Types.OTHER, Types.DOUBLE});
+            }
         } catch (Exception exception) {
-            throw new TableDataCopyException(exception);
+            throw new IndicatorDataProcessingException(exception);
         }
-    }
-
-    private String generateTempTableName() {
-        return "_" + RandomStringUtils.randomAlphanumeric(29).toLowerCase();
     }
 
     public void deleteIndicator(String uuid) {
         jdbcTemplate.update(String.format("DELETE FROM %s WHERE param_uuid = '%s'::uuid",
                 bivariateIndicatorsTestTableName, uuid));
-    }
-
-    public void deleteTempTable(String tempTableName) {
-        jdbcTemplate.update(String.format("DROP TABLE %s", tempTableName));
     }
 
     public BivariateIndicatorDto getIndicatorByIdAndOwner(String id, String owner)

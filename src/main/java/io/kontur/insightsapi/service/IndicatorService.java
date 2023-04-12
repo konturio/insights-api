@@ -4,9 +4,9 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
-import io.kontur.insightsapi.dto.FileUploadResultDto;
 import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
+import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.repository.IndicatorRepository;
 import io.kontur.insightsapi.service.auth.AuthService;
 import lombok.AllArgsConstructor;
@@ -17,6 +17,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,12 +46,9 @@ public class IndicatorService {
     @Transactional
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
         String uuid = "";
-        FileUploadResultDto fileUploadResultDto = new FileUploadResultDto();
         boolean update = false;
 
-        // TODO: extract and validate parameters in a different way. Service/repository shouldn't return ResponseEntity
         try {
-
             BivariateIndicatorDto incomingBivariateIndicatorDto;
             FileItemIterator itemIterator = upload.getItemIterator(request);
             int itemIndex = 0;
@@ -59,70 +57,54 @@ public class IndicatorService {
                 FileItemStream item = itemIterator.next();
                 String name = item.getFieldName();
 
-                if (!item.isFormField() && "file".equals(name) && itemIndex == 1) {
-
-                    fileUploadResultDto = indicatorRepository.uploadCSVFileIntoTempTable(item);
-
-                } else if ("parameters".equals(name) && itemIndex == 0) {
-
+                if ("parameters".equals(name) && itemIndex == 0) {
                     incomingBivariateIndicatorDto = parseRequestFormDataParameters(item);
                     validateParameters(incomingBivariateIndicatorDto);
 
                     String owner = authService.getCurrentUsername().orElseThrow();
                     BivariateIndicatorDto savedBivariateIndicator =
                             indicatorRepository.getIndicatorByIdAndOwner(incomingBivariateIndicatorDto.getId(), owner);
-
                     if (savedBivariateIndicator != null) {
                         update = true;
                     }
 
                     uuid = indicatorRepository.createOrUpdateIndicator(incomingBivariateIndicatorDto, owner, update);
-
                     itemIndex++;
-
+                } else if (!item.isFormField() && "file".equals(name) && itemIndex == 1) {
+                    if (Strings.isNotEmpty(uuid)) {
+                        indicatorRepository.uploadCsvFileIntoStatH3Table(item, uuid, update);
+                        return ResponseEntity.ok().body(uuid);
+                    }
                 } else {
-                    return logAndReturnErrorWithMessage(400, "Wrong field parameter or wrong parameters order in multipart request: " +
-                            "please send a request with multipart data with keys 'parameters' and 'file' in a corresponding order.");
+                    return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, "Wrong field parameter or " +
+                            "wrong parameters order in multipart request: please send a request with multipart data " +
+                            "with keys 'parameters' and 'file' in a corresponding order");
                 }
             }
 
-            if (Strings.isNotEmpty(uuid)
-                    && Strings.isNotEmpty(fileUploadResultDto.getTempTableName())
-                    && fileUploadResultDto.getNumberOfUploadedRows() != 0) {
-                return indicatorRepository.copyDataToStatH3(fileUploadResultDto, uuid, update);
-            } else if (Strings.isNotEmpty(uuid)
-                    && (Strings.isEmpty(fileUploadResultDto.getTempTableName())
-                    || fileUploadResultDto.getNumberOfUploadedRows() == 0)) {
-
-                if (Strings.isNotEmpty(fileUploadResultDto.getErrorMessage())) {
-                    return logAndReturnErrorWithMessage(400, fileUploadResultDto.getErrorMessage());
-                }
-
-                if (fileUploadResultDto.getTempTableName() != null) {
-                    indicatorRepository.deleteTempTable(fileUploadResultDto.getTempTableName());
-                }
-
-                if (update) {
-                    return ResponseEntity.ok().body(uuid);
-                }
-
-                indicatorRepository.deleteIndicator(uuid);
-
-                return logAndReturnErrorWithMessage(400, "File was absent or has a missing data in the request");
-
-            } else {
-                return logAndReturnErrorWithMessage(500, "Could not process request, neither indicator nor h3 indexes were created");
-            }
-
+            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST,
+                    "Could not process request, neither indicator nor h3 indexes were created");
         } catch (FileUploadException | IOException | ValidationException exception) {
-            return logAndReturnErrorWithMessage(400, exception.getMessage());
+            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage());
         } catch (NoSuchElementException exception) {
-            return logAndReturnErrorWithMessage(401, "Incorrect authentication data: could not get username");
+            return logAndReturnErrorWithMessage(HttpStatus.UNAUTHORIZED,
+                    "Incorrect authentication data: could not get username");
         } catch (BivariateIndicatorsPRViolationException exception) {
-            return logAndReturnErrorWithMessage(500, exception.getMessage());
+            return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+        } catch (IndicatorDataProcessingException exception) {
+            if (!update) {
+                indicatorRepository.deleteIndicator(uuid);
+            }
+            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage());
         } catch (Exception exception) {
-            //TODO: update state to previous value if committed in future
-            return logAndReturnErrorWithMessage(500, exception.getMessage());
+            if (update) {
+                return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not update indicator");
+            } else {
+                indicatorRepository.deleteIndicator(uuid);
+                return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not process request, neither indicator nor h3 indexes were created");
+            }
         }
     }
 
@@ -145,10 +127,12 @@ public class IndicatorService {
     private void validateParameters(BivariateIndicatorDto bivariateIndicatorDto) {
         try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
             Validator validator = factory.getValidator();
-            Set<ConstraintViolation<BivariateIndicatorDto>> validationViolations = validator.validate(bivariateIndicatorDto);
+            Set<ConstraintViolation<BivariateIndicatorDto>> validationViolations =
+                    validator.validate(bivariateIndicatorDto);
             if (!validationViolations.isEmpty()) {
                 StringBuilder validationErrorMessage = new StringBuilder();
-                for (ConstraintViolation<BivariateIndicatorDto> bivariateIndicatorDtoConstraintViolation : validationViolations) {
+                for (ConstraintViolation<BivariateIndicatorDto> bivariateIndicatorDtoConstraintViolation :
+                        validationViolations) {
                     validationErrorMessage.append(bivariateIndicatorDtoConstraintViolation.getMessage()).append(". ");
                 }
                 throw new ValidationException(validationErrorMessage.toString());
@@ -160,7 +144,8 @@ public class IndicatorService {
         try {
             return objectMapper.readValue(item.openStream(), BivariateIndicatorDto.class);
         } catch (JsonParseException exception) {
-            throw new IOException(generateExceptionMessage(exception.getProcessor().getParsingContext().getCurrentName()));
+            throw new IOException(generateExceptionMessage(exception.getProcessor().getParsingContext()
+                    .getCurrentName()));
         } catch (MismatchedInputException exception) {
             throw new IOException(generateExceptionMessage(exception.getPath().get(0).getFieldName()));
         }
@@ -180,8 +165,8 @@ public class IndicatorService {
         };
     }
 
-    private ResponseEntity<String> logAndReturnErrorWithMessage(int errorCode, String message) {
+    private ResponseEntity<String> logAndReturnErrorWithMessage(HttpStatus status, String message) {
         logger.error(message);
-        return ResponseEntity.status(errorCode).body(message);
+        return ResponseEntity.status(status).body(message);
     }
 }

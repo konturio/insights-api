@@ -2,38 +2,45 @@ package io.kontur.insightsapi.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencsv.CSVReader;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
 import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.fileupload.FileItemStream;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.InputStreamReader;
+import javax.sql.DataSource;
+import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
 public class IndicatorRepository {
 
+    private static final Logger logger = LoggerFactory.getLogger(IndicatorRepository.class);
+
     private final JdbcTemplate jdbcTemplate;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     private final ObjectMapper objectMapper;
+
+    private final DataSource dataSource;
 
     @Value("classpath:/sql.queries/insert_bivariate_indicators.sql")
     private Resource insertBivariateIndicators;
@@ -73,34 +80,41 @@ public class IndicatorRepository {
     }
 
     @Transactional
-    public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
-        try (CSVReader reader = new CSVReader(new InputStreamReader(file.openStream()))) {
-            if (update) {
-                jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
-                        transposedTableName, uuid));
-            }
-            var query = String.format("INSERT INTO %s (h3, indicator_uuid, indicator_value) " +
-                    "VALUES (?, '%s', ?)", transposedTableName, uuid);
+    public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
+        if (update) {
+            jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
+                    transposedTableName, uuid));
+        }
 
-            int batchSize = 1000;
-            int count = 0;
-            List<Object[]> batchArgs = new ArrayList<>();
+        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
-            String[] row;
-            while ((row = reader.readNext()) != null) {
-                Object[] rowArgs = new Object[]{row[0], row[1]};
-                batchArgs.add(rowArgs);
-                count++;
-                if (count % batchSize == 0) {
-                    jdbcTemplate.batchUpdate(query, batchArgs, new int[]{Types.OTHER, Types.DOUBLE});
-                    batchArgs.clear();
-                }
+        try {
+            Connection connection = DataSourceUtils.getConnection(dataSource);
+            if (connection.isWrapperFor(Connection.class)) {
+                CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
+                copyManager.copyIn(copyManagerQuery, inputStream);
+            } else {
+                logger.error("Could not connect to Copy Manager");
+                throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +
+                        "Can not obtain connection for CopyManager");
             }
-            if (!batchArgs.isEmpty()) {
-                jdbcTemplate.batchUpdate(query, batchArgs, new int[]{Types.OTHER, Types.DOUBLE});
-            }
-        } catch (Exception exception) {
-            throw new IndicatorDataProcessingException(exception);
+        } catch (Exception e) {
+            throw new IndicatorDataProcessingException(adjustMessageForKnownExceptions(e.getMessage()), e);
+        }
+    }
+
+    private String adjustMessageForKnownExceptions(String message) {
+        String tempMessage = message.substring(message.indexOf(", line") + 2, message.indexOf(", column",
+                message.indexOf(", line")));
+        if (message.contains("stringToH3")) {
+            return String.format("Unable to represent %s from the file as H3", tempMessage);
+        } else if (message.contains("valid_cell")) {
+            return String.format("Incorrect H3index found in the file: %s", message.substring(message.indexOf(", line")
+                    + 2, message.indexOf(": \"", message.indexOf(", line"))));
+        } else if (message.contains("double precision")) {
+            return String.format("Incorrect value found in the file: %s", tempMessage);
+        } else {
+            return message;
         }
     }
 

@@ -24,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -72,7 +73,7 @@ public class IndicatorService {
                     itemIndex++;
                 } else if (!item.isFormField() && "file".equals(name) && itemIndex == 1) {
                     if (Strings.isNotEmpty(uuid)) {
-                        indicatorRepository.uploadCsvFileIntoStatH3Table(item, uuid, update);
+                        processAndUploadCsvFile(item, uuid, update);
                         return ResponseEntity.ok().body(uuid);
                     }
                 } else {
@@ -149,6 +150,30 @@ public class IndicatorService {
         } catch (MismatchedInputException exception) {
             throw new IOException(generateExceptionMessage(exception.getPath().get(0).getFieldName()));
         }
+    }
+
+    private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
+        PipedInputStream pipedInputStream = new PipedInputStream();
+        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+
+        // TODO: use thread pool instead of creating new thread for each file
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
+                    StandardCharsets.UTF_8));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
+                         StandardCharsets.UTF_8))) {
+                String row;
+                while ((row = reader.readLine()) != null) {
+                    String[] rowValues = row.split(",");
+                    writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
+            }
+        }).start();
+
+        indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
     }
 
     private String generateExceptionMessage(String fieldName) {

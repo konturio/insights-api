@@ -125,3 +125,8 @@ calculations:
       table: bivariate_axis
       test:
         table: bivariate_axis_test
+  tiles:
+    tile-size: 512
+    hex-edge-pixels: 44
+    max-h3-resolution: 15
+    min-h3-resolution: 0

@@ -47,6 +47,18 @@ public class TileRepository {
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
+    @Value("${calculations.tiles.tile-size}")
+    private Integer tileSize;
+
+    @Value("${calculations.tiles.hex-edge-pixels}")
+    private Integer hexEdgePixels;
+
+    @Value("${calculations.tiles.max-h3-resolution}")
+    private Integer maxH3Resolutions;
+
+    @Value("${calculations.tiles.min-h3-resolution}")
+    private Integer minH3Resolutions;
+
     public byte[] getBivariateTileMvt(Integer z, Integer x, Integer y, List<String> bivariateIndicators) {
 
         String query = generateSqlQuery(bivariateIndicators);
@@ -54,6 +66,11 @@ public class TileRepository {
         var paramSource = new MapSqlParameterSource("z", z);
         paramSource.addValue("x", x);
         paramSource.addValue("y", y);
+        paramSource.addValue("tile_size", tileSize);
+        paramSource.addValue("hex_edge_pixels", hexEdgePixels);
+        paramSource.addValue("max_h3_resolution", maxH3Resolutions);
+        paramSource.addValue("min_h3_resolution", minH3Resolutions);
+
 
         return namedParameterJdbcTemplate.queryForObject(query, paramSource,
                 (rs, rowNum) -> rs.getBytes("tile"));
@@ -67,6 +84,10 @@ public class TileRepository {
         paramSource.addValue("ind1", bivariateIndicators.get(1));
         paramSource.addValue("ind2", bivariateIndicators.get(2));
         paramSource.addValue("ind3", bivariateIndicators.get(3));
+        paramSource.addValue("tile_size", tileSize);
+        paramSource.addValue("hex_edge_pixels", hexEdgePixels);
+        paramSource.addValue("max_h3_resolution", maxH3Resolutions);
+        paramSource.addValue("min_h3_resolution", minH3Resolutions);
         var query = String.format(queryFactory.getSql(getTileMvtIndicatorsListResourceV2),
                 bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName,
                 bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName);

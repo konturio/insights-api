@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
 import java.io.*;
@@ -29,6 +30,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @AllArgsConstructor
@@ -43,6 +47,16 @@ public class IndicatorService {
     private final ObjectMapper objectMapper;
 
     private final AuthService authService;
+
+    private static final int CORE_POOL_SIZE = 100;
+
+    private static final int MAX_POOL_SIZE = 150;
+
+    private static final int MAX_QUEUE_SIZE = 200;
+
+    private static final ThreadPoolExecutor uploadExecutor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE,
+            60, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
 
     @Transactional
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
@@ -156,8 +170,7 @@ public class IndicatorService {
         PipedInputStream pipedInputStream = new PipedInputStream();
         PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
 
-        // TODO: use thread pool instead of creating new thread for each file
-        new Thread(() -> {
+        uploadExecutor.submit(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
                     StandardCharsets.UTF_8));
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
@@ -171,7 +184,7 @@ public class IndicatorService {
             } catch (IOException e) {
                 throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
             }
-        }).start();
+        });
 
         indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
     }
@@ -193,5 +206,10 @@ public class IndicatorService {
     private ResponseEntity<String> logAndReturnErrorWithMessage(HttpStatus status, String message) {
         logger.error(message);
         return ResponseEntity.status(status).body(message);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        uploadExecutor.shutdown();
     }
 }

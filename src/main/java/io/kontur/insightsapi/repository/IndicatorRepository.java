@@ -79,6 +79,7 @@ public class IndicatorRepository {
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
     }
 
+    // TODO: optimize copying large files to PostgreSQL in #15737
     @Transactional
     public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
         if (update) {

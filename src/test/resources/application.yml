@@ -54,3 +54,5 @@ calculations:
     hex-edge-pixels: 44
     max-h3-resolution: 15
     min-h3-resolution: 0
+    max-zoom: 15
+    min-zoom: 0

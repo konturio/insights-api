@@ -128,5 +128,7 @@ calculations:
   tiles:
     tile-size: 512
     hex-edge-pixels: 44
-    max-h3-resolution: 15
+    max-h3-resolution: 8
     min-h3-resolution: 0
+    max-zoom: 15
+    min-zoom: 0

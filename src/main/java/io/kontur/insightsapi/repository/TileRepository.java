@@ -12,8 +12,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Repository
@@ -47,17 +49,6 @@ public class TileRepository {
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
-    @Value("${calculations.tiles.tile-size}")
-    private Integer tileSize;
-
-    @Value("${calculations.tiles.hex-edge-pixels}")
-    private Integer hexEdgePixels;
-
-    @Value("${calculations.tiles.max-h3-resolution}")
-    private Integer maxH3Resolutions;
-
-    @Value("${calculations.tiles.min-h3-resolution}")
-    private Integer minH3Resolutions;
 
     public byte[] getBivariateTileMvt(Integer z, Integer x, Integer y, List<String> bivariateIndicators) {
 
@@ -66,10 +57,6 @@ public class TileRepository {
         var paramSource = new MapSqlParameterSource("z", z);
         paramSource.addValue("x", x);
         paramSource.addValue("y", y);
-        paramSource.addValue("tile_size", tileSize);
-        paramSource.addValue("hex_edge_pixels", hexEdgePixels);
-        paramSource.addValue("max_h3_resolution", maxH3Resolutions);
-        paramSource.addValue("min_h3_resolution", minH3Resolutions);
 
 
         return namedParameterJdbcTemplate.queryForObject(query, paramSource,
@@ -84,10 +71,6 @@ public class TileRepository {
         paramSource.addValue("ind1", bivariateIndicators.get(1));
         paramSource.addValue("ind2", bivariateIndicators.get(2));
         paramSource.addValue("ind3", bivariateIndicators.get(3));
-        paramSource.addValue("tile_size", tileSize);
-        paramSource.addValue("hex_edge_pixels", hexEdgePixels);
-        paramSource.addValue("max_h3_resolution", maxH3Resolutions);
-        paramSource.addValue("min_h3_resolution", minH3Resolutions);
         var query = String.format(queryFactory.getSql(getTileMvtIndicatorsListResourceV2),
                 bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName,
                 bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName);
@@ -132,5 +115,27 @@ public class TileRepository {
             return String.format(queryFactory.getSql(getTileMvtResource),
                     StringUtils.join(bivariateIndicators.stream().map(current -> String.format("coalesce(%s, 0) as %s", current, current)).toList(), ", "));
         }
+    }
+
+    public Map<Integer, Integer> initZoomToH3Resolutions(Integer tileSize, Integer hexEdgePixels,
+                                                         Integer maxH3Resolutions, Integer minH3Resolutions,
+                                                         Integer maxZoom, Integer minZoom) {
+        Map<Integer, Integer> result = new HashMap<>();
+        var paramSource = new MapSqlParameterSource("tile_size", tileSize);
+        paramSource.addValue("hex_edge_pixels", hexEdgePixels);
+        paramSource.addValue("max_h3_resolution", maxH3Resolutions);
+        paramSource.addValue("min_h3_resolution", minH3Resolutions);
+        paramSource.addValue("max_zoom", maxZoom);
+        paramSource.addValue("min_zoom", minZoom);
+        var query = "select i as zoom, tile_zoom_level_to_h3_resolution(i, :max_h3_resolution, :min_h3_resolution, :hex_edge_pixels, :tile_size) as resolution from generate_series(:min_zoom, :max_zoom) i;";
+        List<Map<String, Object>> listRes = namedParameterJdbcTemplate.queryForList(query, paramSource);
+        for (Map<String, Object> item : listRes) {
+            try {
+                result.put(Integer.valueOf(item.get("zoom").toString()),
+                        Integer.valueOf(item.get("resolution").toString()));
+            } catch (Exception ignored) {
+            }
+        }
+        return result;
     }
 }

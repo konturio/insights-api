@@ -94,12 +94,12 @@ public class TileService {
                 minH3Resolutions, maxZoom, minZoom);
         if (MapUtils.isNotEmpty(res)) {
             zoomToH3Resolutions.putAll(res);
-            if (!zoomToH3Resolutions.containsKey(minZoom)) {
-                zoomToH3Resolutions.put(minZoom, minZoom);
-            }
-            if (!zoomToH3Resolutions.containsKey(maxZoom)) {
-                zoomToH3Resolutions.put(maxZoom, maxZoom);
-            }
+        }
+        if (!zoomToH3Resolutions.containsKey(minZoom)) {
+            zoomToH3Resolutions.put(minZoom, minZoom);
+        }
+        if (!zoomToH3Resolutions.containsKey(maxZoom)) {
+            zoomToH3Resolutions.put(maxZoom, maxZoom);
         }
     }
     private Integer getResolution(Integer z) {

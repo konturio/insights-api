@@ -3,22 +3,17 @@ package io.kontur.insightsapi.repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
-import io.kontur.insightsapi.dto.FileUploadResultDto;
 import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
-import io.kontur.insightsapi.exception.ConnectionException;
-import io.kontur.insightsapi.exception.TableDataCopyException;
+import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.fileupload.FileItemStream;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -27,7 +22,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
-import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.Timestamp;
@@ -39,6 +33,7 @@ import java.util.List;
 public class IndicatorRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(IndicatorRepository.class);
+
     private final JdbcTemplate jdbcTemplate;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -84,35 +79,28 @@ public class IndicatorRepository {
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
     }
 
-    //TODO: get rid of intermediate table. InputStream with a CSV file from request have to be adjusted with an UUID of indicator for every row and have to be uploaded to stat_h3_transposed straightaway
-    public FileUploadResultDto uploadCSVFileIntoTempTable(FileItemStream file) throws IOException, ConnectionException {
+    // TODO: optimize copying large files to PostgreSQL in #15737
+    @Transactional
+    public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
+        if (update) {
+            jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
+                    transposedTableName, uuid));
+        }
 
-        String tempTableName = generateTempTableName();
+        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
-        String tempTableQuery = String.format("CREATE UNLOGGED TABLE %s (h3 h3index, indicator_value double " +
-                "precision, CONSTRAINT valid_cell CHECK (h3_is_valid_cell(h3::h3index)))", tempTableName);
-        jdbcTemplate.update(tempTableQuery);
-
-        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", tempTableName);
-
-        long numberOfInsertedRows;
-
-        try (InputStream fileInputStream = file.openStream()) {
+        try {
             Connection connection = DataSourceUtils.getConnection(dataSource);
-
             if (connection.isWrapperFor(Connection.class)) {
-
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                numberOfInsertedRows = copyManager.copyIn(copyManagerQuery, fileInputStream);
-                return new FileUploadResultDto(tempTableName, numberOfInsertedRows, null);
+                copyManager.copyIn(copyManagerQuery, inputStream);
             } else {
                 logger.error("Could not connect to Copy Manager");
-                throw new ConnectionException("Connection was closed unpredictably. Can not obtain connection for " +
-                        "CopyManager");
+                throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +
+                        "Can not obtain connection for CopyManager");
             }
         } catch (Exception e) {
-            return new FileUploadResultDto(null, 0,
-                    adjustMessageForKnownExceptions(e.getMessage()));
+            throw new IndicatorDataProcessingException(adjustMessageForKnownExceptions(e.getMessage()), e);
         }
     }
 
@@ -131,46 +119,9 @@ public class IndicatorRepository {
         }
     }
 
-    public ResponseEntity<String> copyDataToStatH3(FileUploadResultDto fileUploadResultDto, String uuid, boolean update)
-            throws TableDataCopyException {
-        try {
-            if (update) {
-                jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
-                        transposedTableName, uuid));
-            }
-            var copyDataFromTempToStatH3WithUuidQuery = String.format("INSERT INTO %s select h3, '%s', " +
-                    "indicator_value from %s", transposedTableName, uuid, fileUploadResultDto.getTempTableName());
-            long numberOfCopiedRows = jdbcTemplate.update(copyDataFromTempToStatH3WithUuidQuery);
-
-            deleteTempTable(fileUploadResultDto.getTempTableName());
-
-            if (numberOfCopiedRows != fileUploadResultDto.getNumberOfUploadedRows()) {
-                logger.warn(String.format("No errors during uploading occurred but records number validation " +
-                        "did not pass: uploaded from CSV = %s, number of records put in database = %s, " +
-                        "uuid = %s", fileUploadResultDto.getNumberOfUploadedRows(), numberOfCopiedRows, uuid));
-                return ResponseEntity.ok().body(String.format("No errors during uploading occurred but records " +
-                                "number validation did not pass: uploaded from CSV = %s, number of records put in " +
-                                "database = %s, uuid = %s", fileUploadResultDto.getNumberOfUploadedRows(),
-                        numberOfCopiedRows, uuid));
-            }
-
-            return ResponseEntity.ok().body(uuid);
-        } catch (Exception exception) {
-            throw new TableDataCopyException(exception);
-        }
-    }
-
-    private String generateTempTableName() {
-        return "_" + RandomStringUtils.randomAlphanumeric(29).toLowerCase();
-    }
-
     public void deleteIndicator(String uuid) {
         jdbcTemplate.update(String.format("DELETE FROM %s WHERE param_uuid = '%s'::uuid",
                 bivariateIndicatorsTestTableName, uuid));
-    }
-
-    public void deleteTempTable(String tempTableName) {
-        jdbcTemplate.update(String.format("DROP TABLE %s", tempTableName));
     }
 
     public BivariateIndicatorDto getIndicatorByIdAndOwner(String id, String owner)

@@ -58,8 +58,11 @@ public class TileController {
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
         if (lastUpdated == null) {
             return ResponseEntity.ok()
-                    .body(new byte[0]);
+                    .cacheControl(CacheControl.empty().cachePublic())
+                    .header("Expires", HTTP_TIME_FORMATTER.format(Instant.now()))
+                    .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
         }
+
         Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
         String eTag = lastUpdated.toString();
 
@@ -102,8 +105,11 @@ public class TileController {
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
         if (lastUpdated == null) {
             return ResponseEntity.ok()
-                    .body(new byte[0]);
+                    .cacheControl(CacheControl.empty().cachePublic())
+                    .header("Expires", HTTP_TIME_FORMATTER.format(Instant.now()))
+                    .body(tileService.getBivariateTileMvtIndicatorsList(z, x, y, indicatorsList));
         }
+
         Instant expirationTime = lastUpdated.plus(Duration.ofDays(1));
         String eTag = lastUpdated.toString();
 

@@ -1,6 +1,5 @@
 package io.kontur.insightsapi.service;
 
-import com.google.common.collect.Lists;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.dto.BivariativeAxisDto;
 import io.kontur.insightsapi.repository.AxisRepository;
@@ -68,9 +67,21 @@ public class AxisService {
 
             axisRepository.uploadAxis(axisForCurrentIndicators);
 
+            logger.info("Start stops and quality calculations for indicator with uuid {}",
+                    indicatorsForAxis.get(0).getUuid());
+            long calculationStartTime = System.currentTimeMillis();
+
             calculateStopsAndQuality(axisForCurrentIndicators);
+
+            long calculationEndTime = System.currentTimeMillis();
+            long calculationTimeInSeconds = (calculationEndTime - calculationStartTime) / 1000;
+            logger.info("Stops and quality calculations for indicator with uuid {} have been done successfully " +
+                            "and took {}", indicatorsForAxis.get(0).getUuid(),
+                    String.format("%02d hours %02d minutes %02d seconds", calculationTimeInSeconds / 3600,
+                            (calculationTimeInSeconds % 3600) / 60, (calculationTimeInSeconds % 60)));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Indicator data is stored in stat_h3_transposed but error occurred during estimation of axis parameters: " +
+            return ResponseEntity.status(500).body("Indicator data is stored in stat_h3_transposed but error " +
+                    "occurred during estimation of axis parameters: " +
                     e.getMessage() +
                     ". Indicator UUID(s) = " +
                     StringUtils.join(indicatorsForAxis.stream().map(BivariateIndicatorDto::getUuid).toList(), ", "));

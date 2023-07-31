@@ -48,6 +48,9 @@ public class IndicatorRepository {
     @Value("classpath:/sql.queries/update_bivariate_indicators.sql")
     private Resource updateBivariateIndicators;
 
+    @Value("classpath:/sql.queries/14855_update_stat_h3_geom.sql")
+    private Resource updateStatH3Geom;
+
     private final QueryFactory queryFactory;
 
     private final BivariateIndicatorRowMapper bivariateIndicatorRowMapper;
@@ -202,5 +205,9 @@ public class IndicatorRepository {
     public void updateIndicatorState(String uuid, IndicatorState state) {
         jdbcTemplate.update(String.format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
                 bivariateIndicatorsTestTableName, state.name(), uuid));
+    }
+
+    public void updateStatH3Geom() {
+        jdbcTemplate.execute(queryFactory.getSql(updateStatH3Geom));
     }
 }

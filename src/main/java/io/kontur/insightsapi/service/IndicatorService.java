@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -137,6 +138,24 @@ public class IndicatorService {
 
     public void updateIndicatorState(String uuid, IndicatorState state) {
         indicatorRepository.updateIndicatorState(uuid, state);
+    }
+
+    @Transactional
+    @Scheduled(cron = "0 0 18 * * ?")
+    public void updateStatH3Geom() {
+        try {
+            long executionStartTime = System.currentTimeMillis();
+
+            indicatorRepository.updateStatH3Geom();
+
+            long executionEndTime = System.currentTimeMillis();
+            long executionTimeInSeconds = (executionEndTime - executionStartTime) / 1000;
+            logger.info("Geometry update job has been executed successfully and took {}",
+                    String.format("%02d hours %02d minutes %02d seconds", executionTimeInSeconds / 3600,
+                            (executionTimeInSeconds % 3600) / 60, (executionTimeInSeconds % 60)));
+        } catch (Exception e) {
+            logger.error("Error executing geometry update job", e);
+        }
     }
 
     private void validateParameters(BivariateIndicatorDto bivariateIndicatorDto) {

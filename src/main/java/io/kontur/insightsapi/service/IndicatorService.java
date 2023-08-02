@@ -141,9 +141,10 @@ public class IndicatorService {
     }
 
     @Transactional
-    @Scheduled(cron = "0 0 18 * * ?")
+    @Scheduled(cron = "0 30 13 * * ?", zone = "Europe/Warsaw")
     public void updateStatH3Geom() {
         try {
+            logger.info("Start geometry update job");
             long executionStartTime = System.currentTimeMillis();
 
             indicatorRepository.updateStatH3Geom();

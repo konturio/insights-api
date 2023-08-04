@@ -208,6 +208,8 @@ public class IndicatorRepository {
     }
 
     public void updateStatH3Geom() {
+        jdbcTemplate.execute("SET enable_hashjoin = off");
         jdbcTemplate.execute(queryFactory.getSql(updateStatH3Geom));
+        jdbcTemplate.execute("RESET enable_hashjoin");
     }
 }

@@ -17,5 +17,6 @@
     <include  file="add_table_bivariate_axis_v2.sql" relativeToChangelogFile="true"/>
     <include  file="add_table_bivariate_axis_correlation_v2.sql" relativeToChangelogFile="true"/>
     <include  file="add_table_bivariate_axis_stats_v2.sql" relativeToChangelogFile="true"/>
+    <include  file="14855_add_table_shedlock.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

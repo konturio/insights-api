@@ -10,6 +10,7 @@ import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.repository.IndicatorRepository;
 import io.kontur.insightsapi.service.auth.AuthService;
 import lombok.AllArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
@@ -141,8 +142,8 @@ public class IndicatorService {
     }
 
     @Transactional
-//    @Scheduled(cron = "0 0 18 * * ?")
-    @Scheduled(cron = "0 00 12 * * ?", zone = "Europe/Warsaw")
+    @Scheduled(cron = "0 0 18 * * ?")
+    @SchedulerLock(name = "IndicatorService_updateStatH3Geom", lockAtLeastFor = "PT5M", lockAtMostFor = "PT6H")
     public void updateStatH3Geom() {
         try {
             logger.info("Start geometry update job");

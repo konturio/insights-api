@@ -45,6 +45,7 @@
         <jib.source.image>openjdk:16-alpine</jib.source.image>
 
         <jackson-bom.version>2.14.0-rc2</jackson-bom.version>
+        <shedlock.version>5.6.0</shedlock.version>
     </properties>
 
     <dependencies>
@@ -190,6 +191,17 @@
             <artifactId>jackson-bom</artifactId>
             <version>${jackson-bom.version}</version>
             <type>pom</type>
+        </dependency>
+
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
         </dependency>
 
     </dependencies>

@@ -29,6 +29,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -147,15 +148,15 @@ public class IndicatorService {
     public void updateStatH3Geom() {
         try {
             logger.info("Start geometry update job");
-            long executionStartTime = System.currentTimeMillis();
+            Instant executionStartTime = Instant.now();
 
             indicatorRepository.updateStatH3Geom();
 
-            long executionEndTime = System.currentTimeMillis();
-            long executionTimeInSeconds = (executionEndTime - executionStartTime) / 1000;
+            Instant executionEndTime = Instant.now();
+            Duration executionTime = Duration.between(executionStartTime, executionEndTime);
             logger.info("Geometry update job has been executed successfully and took {}",
-                    String.format("%02d hours %02d minutes %02d seconds", executionTimeInSeconds / 3600,
-                            (executionTimeInSeconds % 3600) / 60, (executionTimeInSeconds % 60)));
+                    String.format("%d hours %02d minutes %02d seconds",
+                            executionTime.toHours(), executionTime.toMinutesPart(), executionTime.toSecondsPart()));
         } catch (Exception e) {
             logger.error("Error executing geometry update job", e);
         }

@@ -40,7 +40,7 @@ public class TileRepository {
     private Resource getTileMvtGenerateOnTheFly;
 
     @Value("${calculations.bivariate.indicators.test.table}")
-    private String bivariateIndicatorsTestTableName;
+    private String bivariateIndicatorsMetadataTableName;
 
     @Value("${calculations.bivariate.indicators.table}")
     private String bivariateIndicatorsTableName;
@@ -74,14 +74,14 @@ public class TileRepository {
         paramSource.addValue("ind2", bivariateIndicators.get(2));
         paramSource.addValue("ind3", bivariateIndicators.get(3));
         var query = String.format(queryFactory.getSql(getTileMvtIndicatorsListResourceV2),
-                bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName,
-                bivariateIndicatorsTestTableName, bivariateIndicatorsTestTableName);
+                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName,
+                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName);
         return namedParameterJdbcTemplate.queryForObject(query, paramSource,
                 (rs, rowNum) -> rs.getBytes("tile"));
     }
 
     public List<String> getAllBivariateIndicators() {
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsTestTableName : bivariateIndicatorsTableName;
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
         var query = String.format("select param_id from %s", bivariateIndicatorsTable);
         return jdbcTemplate.query(query, (rs, rowNum) -> rs.getString("param_id"));
     }

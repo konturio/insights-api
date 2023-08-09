@@ -54,13 +54,13 @@ public class AdvancedAnalyticsRepository implements AdvancedAnalyticsService {
     private Resource advancedAnalyticsIntersectFilteredIndicators;
 
     @Value("${calculations.bivariate.indicators.test.table}")
-    private String bivariateIndicatorsTestTableName;
+    private String bivariateIndicatorsMetadataTableName;
 
     @Value("${calculations.bivariate.indicators.table}")
     private String bivariateIndicatorsTableName;
 
     @Value("${calculations.bivariate.axis.test.table}")
-    private String bivariateAxisTestTableName;
+    private String bivariateAxisV2TableName;
 
     @Value("${calculations.bivariate.axis.table}")
     private String bivariateAxisTableName;
@@ -81,8 +81,8 @@ public class AdvancedAnalyticsRepository implements AdvancedAnalyticsService {
 
     @Transactional(readOnly = true)
     public List<BivariativeAxisDto> getFilteredBivariativeAxis(List<AdvancedAnalyticsRequest> argRequests) {
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsTestTableName : bivariateIndicatorsTableName;
-        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisTestTableName : bivariateAxisTableName;
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
+        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisV2TableName : bivariateAxisTableName;
         String filterQuery = getBivariateAxisFilter(argRequests);
         return namedParameterJdbcTemplate.query(String.format(queryFactory.getSql(bivariateAxis),
                         bivariateAxisTable, bivariateIndicatorsTable, bivariateIndicatorsTable) + filterQuery,
@@ -107,8 +107,10 @@ public class AdvancedAnalyticsRepository implements AdvancedAnalyticsService {
     public List<AdvancedAnalytics> getWorldData() {
         List<BivariativeAxisDto> axisDtos = new ArrayList<>();
         List<List<AdvancedAnalyticsValues>> advancedAnalyticsValues = new ArrayList<>();
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsTestTableName : bivariateIndicatorsTableName;
-        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisTestTableName : bivariateAxisTableName;
+        // TODO: not only different tables but also different sql script versions should be used here since uuid
+        //  should be used in new schema
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
+        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisV2TableName : bivariateAxisTableName;
         try {
             namedParameterJdbcTemplate.query(String.format(queryFactory.getSql(advancedAnalyticsWorld),
                     bivariateAxisTable, bivariateIndicatorsTable, bivariateIndicatorsTable), (rs -> {
@@ -137,8 +139,8 @@ public class AdvancedAnalyticsRepository implements AdvancedAnalyticsService {
         List<BivariativeAxisDto> axisDtos = new ArrayList<>();
         List<List<AdvancedAnalyticsValues>> advancedAnalyticsValues = new ArrayList<>();
         String filterQuery = getBivariateAxisFilter(argRequests);
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsTestTableName : bivariateIndicatorsTableName;
-        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisTestTableName : bivariateAxisTableName;
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
+        String bivariateAxisTable = useStatSeparateTables ? bivariateAxisV2TableName : bivariateAxisTableName;
         try {
             namedParameterJdbcTemplate.query(String.format(queryFactory.getSql(advancedAnalyticsWorld),
                     bivariateAxisTable, bivariateIndicatorsTable, bivariateIndicatorsTable) + filterQuery, (rs -> {
@@ -202,7 +204,7 @@ public class AdvancedAnalyticsRepository implements AdvancedAnalyticsService {
         var paramSource = new MapSqlParameterSource();
         paramSource.addValue("polygon", argGeometry);
 
-        String query = String.format(queryFactory.getSql(advancedAnalyticsIntersectAllIndicators), bivariateIndicatorsTestTableName);
+        String query = String.format(queryFactory.getSql(advancedAnalyticsIntersectAllIndicators), bivariateIndicatorsMetadataTableName);
 
         List<AdvancedAnalytics> result = new ArrayList<>();
 

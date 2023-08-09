@@ -60,7 +60,7 @@ public class IndicatorRepository {
     private String transposedTableName;
 
     @Value("${calculations.bivariate.indicators.test.table}")
-    private String bivariateIndicatorsTestTableName;
+    private String bivariateIndicatorsMetadataTableName;
 
     @Value("${calculations.bivariate.indicators.table}")
     private String bivariateIndicatorsTableName;
@@ -73,10 +73,10 @@ public class IndicatorRepository {
 
         if (update) {
             bivariateIndicatorsQuery = String.format(queryFactory.getSql(updateBivariateIndicators),
-                    bivariateIndicatorsTestTableName, owner);
+                    bivariateIndicatorsMetadataTableName, owner);
         } else {
             bivariateIndicatorsQuery = String.format(queryFactory.getSql(insertBivariateIndicators),
-                    bivariateIndicatorsTestTableName);
+                    bivariateIndicatorsMetadataTableName);
         }
 
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
@@ -124,14 +124,14 @@ public class IndicatorRepository {
 
     public void deleteIndicator(String uuid) {
         jdbcTemplate.update(String.format("DELETE FROM %s WHERE param_uuid = '%s'::uuid",
-                bivariateIndicatorsTestTableName, uuid));
+                bivariateIndicatorsMetadataTableName, uuid));
     }
 
     public BivariateIndicatorDto getIndicatorByIdAndOwner(String id, String owner)
             throws BivariateIndicatorsPRViolationException {
         List<BivariateIndicatorDto> bivariateIndicatorDtos = jdbcTemplate.query(
                 String.format("SELECT * FROM %s WHERE param_id = '%s' AND owner = '%s'",
-                        bivariateIndicatorsTestTableName,
+                        bivariateIndicatorsMetadataTableName,
                         id,
                         owner),
                 bivariateIndicatorRowMapper);
@@ -175,13 +175,13 @@ public class IndicatorRepository {
     //TODO: possibly will be added something about owner field here
     @Transactional(readOnly = true)
     public List<BivariateIndicatorDto> getAllBivariateIndicators() {
-        return jdbcTemplate.query(String.format("SELECT * FROM %s", bivariateIndicatorsTestTableName),
+        return jdbcTemplate.query(String.format("SELECT * FROM %s", bivariateIndicatorsMetadataTableName),
                 bivariateIndicatorRowMapper);
     }
 
     public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
         return jdbcTemplate.queryForObject(String.format("SELECT * FROM %s where param_uuid = '%s'::uuid",
-                bivariateIndicatorsTestTableName, uuid), bivariateIndicatorRowMapper);
+                bivariateIndicatorsMetadataTableName, uuid), bivariateIndicatorRowMapper);
     }
 
     //TODO: remove after transition from param_id to uuid as an identifier for indicator. Use 'getIndicatorByUuid' method in future instead
@@ -192,19 +192,19 @@ public class IndicatorRepository {
     }
 
     public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {
-        jdbcTemplate.update(String.format("UPDATE %s SET last_updated = '%s'", bivariateIndicatorsTestTableName,
+        jdbcTemplate.update(String.format("UPDATE %s SET last_updated = '%s'", bivariateIndicatorsMetadataTableName,
                 Timestamp.from(lastUpdated)));
     }
 
     public Instant getIndicatorsLastUpdateDate() {
         Timestamp lastUpdated = jdbcTemplate.queryForObject(String.format("SELECT MAX(last_updated) FROM %s",
-                bivariateIndicatorsTestTableName), Timestamp.class);
+                bivariateIndicatorsMetadataTableName), Timestamp.class);
         return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
 
     public void updateIndicatorState(String uuid, IndicatorState state) {
         jdbcTemplate.update(String.format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
-                bivariateIndicatorsTestTableName, state.name(), uuid));
+                bivariateIndicatorsMetadataTableName, state.name(), uuid));
     }
 
     public void updateStatH3Geom() {

@@ -129,10 +129,6 @@ calculations:
       table: bivariate_axis_correlation
       test:
         table: bivariate_axis_correlation_v2
-    stats:
-      table: bivariate_axis_stats
-      test:
-        table: bivariate_axis_stats_v2
   tiles:
     tile-size: 512
     hex-edge-pixels: 5

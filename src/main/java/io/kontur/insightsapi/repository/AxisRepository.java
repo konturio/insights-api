@@ -33,6 +33,9 @@ public class AxisRepository {
     @Value("classpath:/sql.queries/axis_stops_estimation.sql")
     private Resource axisStopsEstimation;
 
+    @Value("classpath:/sql.queries/16269_bivariate_axis_analytics.sql")
+    private Resource bivariateAxisAnalytics;
+
     @Value("classpath:/sql.queries/delete_axis.sql")
     private Resource deleteAxis;
 
@@ -40,7 +43,7 @@ public class AxisRepository {
     private Resource insertAxis;
 
     @Value("${calculations.bivariate.axis.test.table}")
-    private String bivariateAxisTestTableName;
+    private String bivariateAxisV2TableName;
 
     private final QueryFactory queryFactory;
 
@@ -50,7 +53,8 @@ public class AxisRepository {
                 .toList();
         String paramsAsString = StringUtils.join(params, ", ");
 
-        var query = String.format(queryFactory.getSql(deleteAxis), bivariateAxisTestTableName, paramsAsString, paramsAsString);
+        var query = String.format(queryFactory.getSql(deleteAxis), bivariateAxisV2TableName, paramsAsString,
+                paramsAsString);
 
         try {
             jdbcTemplate.update(query);
@@ -75,7 +79,8 @@ public class AxisRepository {
         }
 
         try {
-            namedParameterJdbcTemplate.batchUpdate(String.format(queryFactory.getSql(insertAxis), bivariateAxisTestTableName), batchOfInputs);
+            namedParameterJdbcTemplate.batchUpdate(String.format(queryFactory.getSql(insertAxis),
+                    bivariateAxisV2TableName), batchOfInputs);
         } catch (Exception e) {
             logger.error("Could not insert axis.", e);
             throw new IllegalArgumentException("Could not insert axis.", e);
@@ -87,12 +92,13 @@ public class AxisRepository {
         paramSource.addValue("numerator_uuid", bivariativeAxisDto.getNumerator_uuid());
         paramSource.addValue("denominator_uuid", bivariativeAxisDto.getDenominator_uuid());
 
-        String query = String.format(queryFactory.getSql(qualityEstimation), bivariateAxisTestTableName);
-
+        String query = String.format(queryFactory.getSql(qualityEstimation), bivariateAxisV2TableName);
         calculateAndUpdate(query, paramSource);
 
-        query = String.format(queryFactory.getSql(axisStopsEstimation), bivariateAxisTestTableName);
+        query = String.format(queryFactory.getSql(axisStopsEstimation), bivariateAxisV2TableName);
+        calculateAndUpdate(query, paramSource);
 
+        query = String.format(queryFactory.getSql(bivariateAxisAnalytics), bivariateAxisV2TableName);
         calculateAndUpdate(query, paramSource);
     }
 
@@ -100,11 +106,12 @@ public class AxisRepository {
         try {
             namedParameterJdbcTemplate.update(query, paramSource);
         } catch (Exception e) {
-            String error = String.format("Could not estimate stops or quality for numerator_uuid = %s, denominator_uuid = %s",
-                    paramSource.getValue("numerator_uuid"), paramSource.getValue("denominator_uuid"));
+            String error = String.format("Could not estimate stops or quality for numerator_uuid = %s, " +
+                            "denominator_uuid = %s",
+                    paramSource.getValue("numerator_uuid"),
+                    paramSource.getValue("denominator_uuid"));
             logger.error(error, e);
             throw new IllegalArgumentException(error, e);
         }
     }
-
 }

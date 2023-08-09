@@ -39,7 +39,7 @@ public class FunctionsRepository implements FunctionsService {
     private Boolean useStatSeparateTables;
 
     @Value("${calculations.bivariate.indicators.test.table}")
-    private String bivariateIndicatorsTestTableName;
+    private String bivariateIndicatorsMetadataTableName;
 
     @Value("${calculations.bivariate.indicators.table}")
     private String bivariateIndicatorsTableName;
@@ -82,7 +82,7 @@ public class FunctionsRepository implements FunctionsService {
             for (int i = 0; i < paramIds.size(); i++) {
                 columns.add(String.format("res_%s.indicator_value as %s", i, paramIds.get(i)));
                 fromRes.add(String.format("res_%s", i));
-                fromBivariateIndicators.add(String.format("%s bi_%s", bivariateIndicatorsTestTableName, i));
+                fromBivariateIndicators.add(String.format("%s bi_%s", bivariateIndicatorsMetadataTableName, i));
                 whereUuid.add(String.format("res_%s.indicator_uuid = bi_%s.param_uuid", i, i));
                 whereParamId.add(String.format("bi_%s.param_id = '%s'", i, paramIds.get(i)));
             }
@@ -91,7 +91,7 @@ public class FunctionsRepository implements FunctionsService {
                     whereH3.add(String.format("res_%s.h3 = res_%s.h3 and ", 0, i));
                 }
             }
-            query = String.format(queryFactory.getSql(functionIntersectV2), bivariateIndicatorsTestTableName, StringUtils.join(paramIds, "', '"),
+            query = String.format(queryFactory.getSql(functionIntersectV2), bivariateIndicatorsMetadataTableName, StringUtils.join(paramIds, "', '"),
                     StringUtils.join(columns, ", "), StringUtils.join(fromRes, ", res "), StringUtils.join(fromBivariateIndicators, ", "), StringUtils.join(whereH3, ""),
                     StringUtils.join(whereUuid, " and "), StringUtils.join(whereParamId, " and "), StringUtils.join(params, ", "));
         } else {
@@ -145,7 +145,7 @@ public class FunctionsRepository implements FunctionsService {
     }
 
     private Unit getUnit(FunctionArgs arg) {
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsTestTableName : bivariateIndicatorsTableName;
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
         String query;
         //TODO: localization for units can be added to this request in future
         try {

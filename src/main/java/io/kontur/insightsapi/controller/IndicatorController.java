@@ -31,17 +31,29 @@ public class IndicatorController {
             description = "Upload data representing h3Index - indicatorValue pairs in the form of CSV file " +
                     "(no header) alongside indicator metadata. After data has been successfully uploaded, " +
                     "the response with indicator unique identifier (uuid) is returned and calculations for " +
-                    "indicator start in the background. Files can't be uploaded via Swagger due to endpoint " +
-                    "implementation. Curl example: curl --location " +
-                    "'https://apps.kontur.io/insights-api/indicators/upload' " +
-                    "--header 'Authorization: {ACCESS_TOKEN} " +
+                    "indicator start in the background." +
+
+                    "<br><br>Currently files can't be uploaded via Swagger due to endpoint " +
+                    "implementation specifics." +
+
+                    "<br><br>Curl general example: curl -w \":::\"%{http_code} --location --request POST " +
+                    "https://apps.kontur.io/insights-api/indicators/upload " +
+                    "--header 'Authorization: <ACCESS_TOKEN> " +
                     "--form 'parameters=\"{\\\"id\\\": ${layer_id}, \\\"label\\\": ${layer_label}, " +
                     "\\\"direction\\\": ${layer_direction}, \\\"isBase\\\": ${layer_isbase}, \\\"isPublic\\\": " +
                     "${layer_ispublic}, \\\"copyrights\\\": ${layer_copyrights}, \\\"description\\\": " +
                     "${layer_description}, \\\"coverage\\\": ${layer_coverage}, \\\"updateFrequency\\\": " +
                     "${layer_update_freq}, \\\"unitId\\\": ${layer_unit_id}, \\\"lastUpdated\\\": " +
                     "${layer_last_updated}}\" " +
-                    "--form 'file=@\"/path/to/file/indicator.csv\"'",
+                    "--form 'file=@\"/path/to/file/indicator.csv\"'" +
+
+                    "<br><br>Curl example with parameters: curl -w \":::\"%{http_code} --location --request POST " +
+                    "https://apps.kontur.io/insights-api/indicators/upload --header " +
+                    "'Authorization: Bearer <ACCESS_TOKEN>' --form 'parameters={\"id\": \"area_km2\", \"label\": " +
+                    "\"Area\", \"direction\": [[\"neutral\"], [\"neutral\"]], \"isBase\": true, \"isPublic\": false, " +
+                    "\"copyrights\": [\"Concept of areas © Brahmagupta, René Descartes\"], \"description\": \"\", " +
+                    "\"coverage\": \"World\", \"updateFrequency\": \"static\", \"unitId\": \"km2\", \"lastUpdated\": " +
+                    "\"\"}' --form 'file=@\"data/area_km2.csv\"'",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Successful upload"),
                     @ApiResponse(responseCode = "400", description = "Bad Request"),

@@ -1,4 +1,4 @@
-with statistics as (select g.resolution as r,
+with statistics as (select h3_get_resolution(numerator.h3) as r,
                            jsonb_build_object(
                                    'sum', nullif(sum(z.m), 0),
                                    'min', min(z.m) filter (where z.m != 0),
@@ -6,15 +6,15 @@ with statistics as (select g.resolution as r,
                                    'mean', nullif(avg(z.m), 0),
                                    'stddev', nullif(stddev(z.m), 0),
                                    'median', nullif(percentile_cont(0.5) within group (order by z.m), 0)
-                               )        as stats
-                    from stat_h3_geom AS g
-                             join stat_h3_transposed as numerator
-                                  on numerator.indicator_uuid = :numerator_uuid::uuid and g.h3 = numerator.h3
+                               )                           as stats
+                    from stat_h3_transposed AS numerator
                              join stat_h3_transposed as denominator
-                                  on denominator.indicator_uuid = :denominator_uuid::uuid and g.h3 = denominator.h3,
+                                  on denominator.indicator_uuid = :denominator_uuid::uuid and
+                                     denominator.h3 = numerator.h3,
                          lateral (
                              select numerator.indicator_value / nullif(denominator.indicator_value, 0) as m
                              ) z
+                    where numerator.indicator_uuid = :numerator_uuid::uuid
                     group by r
                     order by r),
      quality as (select key,
@@ -34,8 +34,8 @@ with statistics as (select g.resolution as r,
      upd as (select jsonb_object_agg(key, array [value, quality]) j
              from quality)
 update %s ba
-set sum_value      = (j -> 'sum' ->> 0)::double precision,
-    sum_quality    = (j -> 'sum' ->> 1)::double precision,
+set sum_value = (j -> 'sum' ->> 0)::double precision,
+    sum_quality = (j -> 'sum' ->> 1)::double precision,
     min_value      = (j -> 'min' ->> 0)::double precision,
     min_quality    = (j -> 'min' ->> 1)::double precision,
     max_value      = (j -> 'max' ->> 0)::double precision,

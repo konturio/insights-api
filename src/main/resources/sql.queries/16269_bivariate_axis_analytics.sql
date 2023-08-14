@@ -9,12 +9,12 @@ with statistics as (select h3_get_resolution(numerator.h3) as r,
                                )                           as stats
                     from stat_h3_transposed AS numerator
                              join stat_h3_transposed as denominator
-                                  on denominator.indicator_uuid = :denominator_uuid::uuid and
-                                     denominator.h3 = numerator.h3,
+                                  on numerator.indicator_uuid = :numerator_uuid::uuid
+                                      and denominator.indicator_uuid = :denominator_uuid::uuid
+                                      and numerator.h3 = denominator.h3,
                          lateral (
                              select numerator.indicator_value / nullif(denominator.indicator_value, 0) as m
                              ) z
-                    where numerator.indicator_uuid = :numerator_uuid::uuid
                     group by r
                     order by r),
      quality as (select key,

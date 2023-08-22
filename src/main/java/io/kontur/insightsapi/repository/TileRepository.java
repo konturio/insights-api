@@ -82,6 +82,7 @@ public class TileRepository {
 
     public List<String> getAllBivariateIndicators() {
         String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
+        // TODO change the logic of indicator retrieval in useStatSeparateTables=true case
         var query = String.format("select param_id from %s", bivariateIndicatorsTable);
         return jdbcTemplate.query(query, (rs, rowNum) -> rs.getString("param_id"));
     }

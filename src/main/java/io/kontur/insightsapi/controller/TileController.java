@@ -52,10 +52,10 @@ public class TileController {
                                                       @PathVariable Integer y,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
-        if (tileService.isVersion2()) {
-            String msg = "Please use tile service version 2";
-            return ResponseEntity.status(HttpStatus.GONE).body(msg.getBytes());
-        }
+//        if (tileService.isVersion2()) {
+//            String msg = "Please use tile service version 2";
+//            return ResponseEntity.status(HttpStatus.GONE).body(msg.getBytes());
+//        }
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);

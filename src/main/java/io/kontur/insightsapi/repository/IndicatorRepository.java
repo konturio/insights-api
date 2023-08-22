@@ -179,6 +179,14 @@ public class IndicatorRepository {
                 bivariateIndicatorRowMapper);
     }
 
+    // TODO: use owner here as param_id alone is no longer considered to be unique
+    @Transactional(readOnly = true)
+    public List<BivariateIndicatorDto> getSelectedBivariateIndicators(List<String> indicatorIds) {
+        return jdbcTemplate.query(String.format("SELECT * FROM %s WHERE param_id in ('%s')",
+                        bivariateIndicatorsMetadataTableName, String.join("','", indicatorIds)),
+                bivariateIndicatorRowMapper);
+    }
+
     public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
         return jdbcTemplate.queryForObject(String.format("SELECT * FROM %s where param_uuid = '%s'::uuid",
                 bivariateIndicatorsMetadataTableName, uuid), bivariateIndicatorRowMapper);

@@ -97,14 +97,16 @@ public class TileRepository {
 
     private String generateSqlQuery(List<String> bivariateIndicators) {
         if (useStatSeparateTables) {
-            List<BivariateIndicatorDto> bivariateIndicatorDtos = indicatorRepository.getAllBivariateIndicators();
+            List<BivariateIndicatorDto> bivariateIndicatorDtos =
+                    indicatorRepository.getSelectedBivariateIndicators(bivariateIndicators);
 
             List<String> outerFilter = Lists.newArrayList();
             List<String> columns = Lists.newArrayList();
 
             for (BivariateIndicatorDto indicator : bivariateIndicatorDtos) {
                 outerFilter.add(String.format("'%s'", indicator.getUuid()));
-                columns.add(String.format("coalesce(avg(indicator_value) filter (where indicator_uuid = '%s'), 0) as %s", indicator.getUuid(), indicator.getId()));
+                columns.add(String.format("coalesce(avg(indicator_value) filter (where indicator_uuid = '%s'), 0) as %s",
+                        indicator.getUuid(), indicator.getId()));
             }
 
             return String.format(queryFactory.getSql(getTileMvtGenerateOnTheFly),
@@ -113,7 +115,8 @@ public class TileRepository {
 
         } else {
             return String.format(queryFactory.getSql(getTileMvtResource),
-                    StringUtils.join(bivariateIndicators.stream().map(current -> String.format("coalesce(%s, 0) as %s", current, current)).toList(), ", "));
+                    StringUtils.join(bivariateIndicators.stream().map(current -> String.format("coalesce(%s, 0) as %s",
+                            current, current)).toList(), ", "));
         }
     }
 

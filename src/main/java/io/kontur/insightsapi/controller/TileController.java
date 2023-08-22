@@ -44,7 +44,6 @@ public class TileController {
                     @ApiResponse(responseCode = "200", description = "Successful operation",
                             content = @Content(mediaType = "application/vnd.mapbox-vector-tile")),
                     @ApiResponse(responseCode = "400", description = "Bad Request"),
-                    @ApiResponse(responseCode = "410", description = "Service is gone. Use tile service version 2"),
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping(value = "/bivariate/v1/{z}/{x}/{y}.mvt", produces = "application/vnd.mapbox-vector-tile")
     public ResponseEntity<byte[]> getBivariateTileMvt(@PathVariable Integer z,
@@ -52,10 +51,6 @@ public class TileController {
                                                       @PathVariable Integer y,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
-//        if (tileService.isVersion2()) {
-//            String msg = "Please use tile service version 2";
-//            return ResponseEntity.status(HttpStatus.GONE).body(msg.getBytes());
-//        }
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);

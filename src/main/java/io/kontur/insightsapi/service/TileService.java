@@ -111,8 +111,4 @@ public class TileService {
                         ? zoomToH3Resolutions.get(maxZoom)
                         : z;
     }
-
-    public boolean isVersion2() {
-        return tileRepository.getUseStatSeparateTables();
-    }
 }

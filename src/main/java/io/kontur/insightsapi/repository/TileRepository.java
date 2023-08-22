@@ -2,7 +2,6 @@ package io.kontur.insightsapi.repository;
 
 import com.google.common.collect.Lists;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +46,6 @@ public class TileRepository {
 
     private final IndicatorRepository indicatorRepository;
 
-    @Getter
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
@@ -82,7 +80,6 @@ public class TileRepository {
 
     public List<String> getAllBivariateIndicators() {
         String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
-        // TODO change the logic of indicator retrieval in useStatSeparateTables=true case
         var query = String.format("select param_id from %s", bivariateIndicatorsTable);
         return jdbcTemplate.query(query, (rs, rowNum) -> rs.getString("param_id"));
     }

@@ -49,7 +49,8 @@ public class TileRepository {
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
-    public byte[] getBivariateTileMvt(Integer resolution, Integer z, Integer x, Integer y, List<String> bivariateIndicators) {
+    public byte[] getBivariateTileMvt(Integer resolution, Integer z, Integer x, Integer y,
+                                      List<String> bivariateIndicators) {
 
         String query = generateSqlQuery(bivariateIndicators);
 
@@ -62,7 +63,8 @@ public class TileRepository {
                 (rs, rowNum) -> rs.getBytes("tile"));
     }
 
-    public byte[] getBivariateTileMvtIndicatorsListV2(Integer resolution, Integer z, Integer x, Integer y, List<String> bivariateIndicators) {
+    public byte[] getBivariateTileMvtIndicatorsListV2(Integer resolution, Integer z, Integer x, Integer y,
+                                                      List<String> bivariateIndicators) {
         var paramSource = new MapSqlParameterSource("z", z);
         paramSource.addValue("x", x);
         paramSource.addValue("y", y);
@@ -72,14 +74,16 @@ public class TileRepository {
         paramSource.addValue("ind2", bivariateIndicators.get(2));
         paramSource.addValue("ind3", bivariateIndicators.get(3));
         var query = String.format(queryFactory.getSql(getTileMvtIndicatorsListResourceV2),
-                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName,
-                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName);
+                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName,
+                bivariateIndicatorsMetadataTableName, bivariateIndicatorsMetadataTableName,
+                bivariateIndicatorsMetadataTableName);
         return namedParameterJdbcTemplate.queryForObject(query, paramSource,
                 (rs, rowNum) -> rs.getBytes("tile"));
     }
 
     public List<String> getAllBivariateIndicators() {
-        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName : bivariateIndicatorsTableName;
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName
+                : bivariateIndicatorsTableName;
         var query = String.format("select param_id from %s", bivariateIndicatorsTable);
         return jdbcTemplate.query(query, (rs, rowNum) -> rs.getString("param_id"));
     }
@@ -130,7 +134,8 @@ public class TileRepository {
         paramSource.addValue("min_h3_resolution", minH3Resolutions);
         paramSource.addValue("max_zoom", maxZoom);
         paramSource.addValue("min_zoom", minZoom);
-        var query = "select i as zoom, tile_zoom_level_to_h3_resolution(i, :max_h3_resolution, :min_h3_resolution, :hex_edge_pixels, :tile_size) as resolution from generate_series(:min_zoom, :max_zoom) i;";
+        var query = "select i as zoom, tile_zoom_level_to_h3_resolution(i, :max_h3_resolution, :min_h3_resolution, " +
+                ":hex_edge_pixels, :tile_size) as resolution from generate_series(:min_zoom, :max_zoom) i;";
         List<Map<String, Object>> listRes = namedParameterJdbcTemplate.queryForList(query, paramSource);
         for (Map<String, Object> item : listRes) {
             try {

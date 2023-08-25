@@ -50,16 +50,13 @@ public class TileService {
     public byte[] getBivariateTileMvt(Integer z, Integer x, Integer y, String indicatorsClass) {
         List<String> bivariateIndicators;
         switch (indicatorsClass) {
-            case ("all"):
-                bivariateIndicators = tileRepository.getAllBivariateIndicators();
-                break;
-            case ("general"):
-                bivariateIndicators = tileRepository.getGeneralBivariateIndicators();
-                break;
-            default:
+            case ("all") -> bivariateIndicators = tileRepository.getAllBivariateIndicators();
+            case ("general") -> bivariateIndicators = tileRepository.getGeneralBivariateIndicators();
+            default -> {
                 String error = String.format("Tile indicator class is not defined. Class: %s", indicatorsClass);
                 logger.error(error);
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, error);
+            }
         }
         return tileRepository.getBivariateTileMvt(getResolution(z), z, x, y, bivariateIndicators);
     }

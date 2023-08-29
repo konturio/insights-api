@@ -65,6 +65,9 @@ public class IndicatorRepository {
     @Value("${calculations.bivariate.indicators.table}")
     private String bivariateIndicatorsTableName;
 
+    @Value("${calculations.useStatSeparateTables:false}")
+    private Boolean useStatSeparateTables;
+
     public String createOrUpdateIndicator(BivariateIndicatorDto bivariateIndicatorDto, String owner, boolean update)
             throws JsonProcessingException {
 
@@ -195,8 +198,10 @@ public class IndicatorRepository {
     //TODO: remove after transition from param_id to uuid as an identifier for indicator. Use 'getIndicatorByUuid' method in future instead
     @Deprecated
     public String getLabelByParamId(String paramId) {
+        String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName
+                : bivariateIndicatorsTableName;
         return jdbcTemplate.queryForObject(String.format("SELECT param_label FROM %s where param_id = '%s'",
-                bivariateIndicatorsTableName, paramId), String.class);
+                bivariateIndicatorsTable, paramId), String.class);
     }
 
     public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {

@@ -190,9 +190,19 @@ public class IndicatorRepository {
                 bivariateIndicatorRowMapper);
     }
 
-    public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
-        return jdbcTemplate.queryForObject(String.format("SELECT * FROM %s where param_uuid = '%s'::uuid",
-                bivariateIndicatorsMetadataTableName, uuid), bivariateIndicatorRowMapper);
+    public BivariateIndicatorDto getIndicatorByUuid(String uuid) throws BivariateIndicatorsPRViolationException {
+        List<BivariateIndicatorDto> bivariateIndicatorDtos = jdbcTemplate.query(
+                String.format("SELECT * FROM %s where param_uuid = '%s'::uuid",
+                        bivariateIndicatorsMetadataTableName,
+                        uuid),
+                bivariateIndicatorRowMapper);
+
+        return switch (bivariateIndicatorDtos.size()) {
+            case 0 -> null;
+            case 1 -> bivariateIndicatorDtos.get(0);
+            default -> throw new BivariateIndicatorsPRViolationException(String.format("More then one indicator " +
+                    "found with uuid: %s", uuid));
+        };
     }
 
     //TODO: remove after transition from param_id to uuid as an identifier for indicator. Use 'getIndicatorByUuid' method in future instead

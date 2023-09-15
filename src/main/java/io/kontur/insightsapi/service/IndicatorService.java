@@ -126,8 +126,14 @@ public class IndicatorService {
         }
     }
 
-    public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
+    public BivariateIndicatorDto getIndicatorByUuid(String uuid) throws BivariateIndicatorsPRViolationException {
         return indicatorRepository.getIndicatorByUuid(uuid);
+    }
+
+    public BivariateIndicatorDto getIndicatorByParamIdAndOwner(String paramId)
+            throws BivariateIndicatorsPRViolationException {
+        String owner = authService.getCurrentUsername().orElseThrow();
+        return indicatorRepository.getIndicatorByIdAndOwner(paramId, owner);
     }
 
     public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {

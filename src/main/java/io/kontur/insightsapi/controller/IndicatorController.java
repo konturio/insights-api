@@ -2,6 +2,8 @@ package io.kontur.insightsapi.controller;
 
 import io.kontur.insightsapi.service.IndicatorProcessHelper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -62,4 +65,35 @@ public class IndicatorController {
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
         return indicatorProcessHelper.processIndicator(request);
     }
+
+    @Operation(summary = "Start calculation of stops and quality by indicator's uuid.",
+            tags = {"Indicators"},
+            description = "Calculate stops and quality.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successful operation",
+                            content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "Bad Request"),
+                    @ApiResponse(responseCode = "500", description = "Internal error")})
+    @PostMapping(value = "/calculateByUuid")
+    public ResponseEntity<String> calculateStopsAndQualityByUuid(
+            @Parameter(description = "Indicator's uuid for calculation.") @RequestBody String indicatorUuid) {
+        return indicatorProcessHelper.submitStopsAndQualityCalculation(indicatorUuid,
+                IndicatorProcessHelper.PARAM_NAME_UUID);
+    }
+
+    @Operation(summary = "Start calculation of stops and quality by indicator's param_id.",
+            tags = {"Indicators"},
+            description = "Calculate stops and quality.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successful operation",
+                            content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "Bad Request"),
+                    @ApiResponse(responseCode = "500", description = "Internal error")})
+    @PostMapping(value = "/calculateByParamId")
+    public ResponseEntity<String> calculateStopsAndQualityByParamId(
+            @Parameter(description = "Indicator's param_id for calculation.") @RequestBody String indicatorUuid) {
+        return indicatorProcessHelper.submitStopsAndQualityCalculation(indicatorUuid,
+                IndicatorProcessHelper.PARAM_NAME_PARAM_ID);
+    }
+
 }

@@ -193,21 +193,19 @@ public class IndicatorService {
         PipedInputStream pipedInputStream = new PipedInputStream();
         PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
 
-        uploadExecutor.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
-                    StandardCharsets.UTF_8));
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
-                         StandardCharsets.UTF_8))) {
-                String row;
-                while ((row = reader.readLine()) != null) {
-                    String[] rowValues = row.split(",");
-                    writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
-                    writer.newLine();
-                }
-            } catch (IOException e) {
-                throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
+                StandardCharsets.UTF_8));
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
+                     StandardCharsets.UTF_8))) {
+            String row;
+            while ((row = reader.readLine()) != null) {
+                String[] rowValues = row.split(",");
+                writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
+                writer.newLine();
             }
-        });
+        } catch (IOException e) {
+            throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
+        }
 
         indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
     }

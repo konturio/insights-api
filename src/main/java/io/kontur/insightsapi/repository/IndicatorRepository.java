@@ -21,12 +21,17 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Repository
 @RequiredArgsConstructor
@@ -68,6 +73,16 @@ public class IndicatorRepository {
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
+    private static final int CORE_POOL_SIZE = 100;
+
+    private static final int MAX_POOL_SIZE = 150;
+
+    private static final int MAX_QUEUE_SIZE = 200;
+
+    private static final ThreadPoolExecutor uploadExecutor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE,
+            60, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
+
     public String createOrUpdateIndicator(BivariateIndicatorDto bivariateIndicatorDto, String owner, boolean update)
             throws JsonProcessingException {
 
@@ -87,7 +102,7 @@ public class IndicatorRepository {
 
     // TODO: optimize copying large files to PostgreSQL in #15737
     @Transactional
-    public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
+    public Future<?> uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
         if (update) {
             jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
                     transposedTableName, uuid));
@@ -99,7 +114,7 @@ public class IndicatorRepository {
             Connection connection = DataSourceUtils.getConnection(dataSource);
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                copyManager.copyIn(copyManagerQuery, inputStream);
+                return uploadExecutor.submit(() -> copyManager.copyIn(copyManagerQuery, inputStream));
             } else {
                 logger.error("Could not connect to Copy Manager");
                 throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +
@@ -224,5 +239,10 @@ public class IndicatorRepository {
         jdbcTemplate.execute("SET enable_hashjoin = off");
         jdbcTemplate.execute(queryFactory.getSql(updateStatH3Geom));
         jdbcTemplate.execute("RESET enable_hashjoin");
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        uploadExecutor.shutdown();
     }
 }

@@ -33,9 +33,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Service
 @AllArgsConstructor
@@ -190,32 +188,34 @@ public class IndicatorService {
     }
 
     private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
-        PipedInputStream pipedInputStream = new PipedInputStream();
-        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+        try (PipedInputStream pipedInputStream = new PipedInputStream();
+             PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream)) {
 
-        uploadExecutor.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
-                    StandardCharsets.UTF_8));
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
-                         StandardCharsets.UTF_8))) {
-                String row;
-                while ((row = reader.readLine()) != null) {
-                    String[] rowValues = row.split(",");
-                    writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
-                    writer.newLine();
+            Future<?> writeTask = uploadExecutor.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
+                        StandardCharsets.UTF_8));
+                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
+                             StandardCharsets.UTF_8))) {
+                    String row;
+                    while ((row = reader.readLine()) != null) {
+                        String[] rowValues = row.split(",");
+                        writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
+                        writer.newLine();
+                    }
+                    logger.info("Successfully adjusted incoming CSV with uuid: " + uuid);
+                } catch (IOException e) {
+                    logger.error("Unable to adjust incoming csv stream with uuid: " + uuid + ". " + e.getMessage(), e);
+                    throw new IndicatorDataProcessingException(e.getMessage(), e);
                 }
-                logger.info("Indicator data written to stream: " + uuid);
-            } catch (IOException e) {
-                logger.error("Failed to write indicator data to stream: " + uuid + ". " + e.getMessage(), e);
-                throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
-            }
-        });
+            });
 
-        logger.info("Active upload tasks: " + uploadExecutor.getActiveCount() +
-                ", Completed tasks: " + uploadExecutor.getCompletedTaskCount() +
-                ", Total tasks: " + uploadExecutor.getTaskCount());
+            Future<?> copyTask = indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
 
-        indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
+            writeTask.get();
+            copyTask.get();
+        } catch (Exception e) {
+            throw new IndicatorDataProcessingException("Unable to copy the CSV file to database", e);
+        }
     }
 
     private String generateExceptionMessage(String fieldName) {

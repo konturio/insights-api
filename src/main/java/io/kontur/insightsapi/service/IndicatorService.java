@@ -204,11 +204,16 @@ public class IndicatorService {
                     writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
                     writer.newLine();
                 }
+                logger.info("Indicator data written to stream: " + uuid);
             } catch (IOException e) {
-                logger.error("Unable to adjust incoming csv stream with uuid", e);
+                logger.error("Failed to write indicator data to stream: " + uuid + ". " + e.getMessage(), e);
                 throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
             }
         });
+
+        logger.info("Active upload tasks: " + uploadExecutor.getActiveCount() +
+                ", Completed tasks: " + uploadExecutor.getCompletedTaskCount() +
+                ", Total tasks: " + uploadExecutor.getTaskCount());
 
         indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
     }

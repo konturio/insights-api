@@ -202,6 +202,7 @@ public class IndicatorService {
                         writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
                         writer.newLine();
                     }
+                    writer.flush();
                     logger.info("Successfully adjusted incoming CSV with uuid: " + uuid);
                 } catch (IOException e) {
                     logger.error("Unable to adjust incoming csv stream with uuid: " + uuid + ". " + e.getMessage(), e);

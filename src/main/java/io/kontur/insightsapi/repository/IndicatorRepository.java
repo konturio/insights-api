@@ -114,7 +114,14 @@ public class IndicatorRepository {
             Connection connection = DataSourceUtils.getConnection(dataSource);
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                return uploadExecutor.submit(() -> copyManager.copyIn(copyManagerQuery, inputStream));
+                return uploadExecutor.submit(() -> {
+                    try {
+                        copyManager.copyIn(copyManagerQuery, inputStream);
+                    } catch (Exception e) {
+                        logger.error("Unable to copy csv stream with uuid: " + uuid + ". " + e.getMessage(), e);
+                        throw new IndicatorDataProcessingException(e.getMessage(), e);
+                    }
+                });
             } else {
                 logger.error("Could not connect to Copy Manager");
                 throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +

@@ -1,10 +1,10 @@
 # Insights Api
 GraphQL API for calculating correlation between parameters in given polygon in geojson format and lists of numerators and denominators for x and y axes
 
-##Test UI
+## Test UI
 Test UI is available on http://url/graphiql
 
-##Requests
+## Requests
 Get all Earth correlations:
 ```
 {allStatistic(defaultParam: 1){fields}}
@@ -19,7 +19,7 @@ Get correlations in polygon in GeoJSON (single polygon, feature collection or fe
 ```
 **Fields description** https://gist.github.com/Akiyamka/8ad19a8de3c955ac1f27f67281c12fdf#axis
 
-##Performance tests
+## Performance tests
 Simple performance test for calculating correlation is in scripts package. There are several geometries from dev 
 environment and python script with test. More about test framework here http://docs.locust.io/en/stable/
 

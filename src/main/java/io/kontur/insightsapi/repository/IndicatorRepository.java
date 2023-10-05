@@ -123,7 +123,8 @@ public class IndicatorRepository {
                     String row;
                     while ((row = reader.readLine()) != null) {
                         String[] rowValues = row.split(",");
-                        String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1], "\n");
+                        String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1]);
+                        transformedRow += "\n";
                         byte[] bytes = transformedRow.getBytes();
                         copyIn.writeToCopy(bytes, 0, bytes.length);
                     }
@@ -139,7 +140,7 @@ public class IndicatorRepository {
                         "Can not obtain connection for CopyManager");
             }
         } catch (Exception e) {
-            throw new IndicatorDataProcessingException(adjustMessageForKnownExceptions(e.getMessage()), e);
+            throw new IndicatorDataProcessingException(e.getMessage(), e);
         }
     }
 

@@ -114,8 +114,8 @@ public class IndicatorRepository {
 
         var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
-        try (Connection connection = DataSourceUtils.getConnection(dataSource);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
+            Connection connection = DataSourceUtils.getConnection(dataSource);
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
                 CopyIn copyIn = copyManager.copyIn(copyManagerQuery);

@@ -8,6 +8,9 @@ import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
 import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.fileupload.FileItemStream;
+import org.postgresql.PGConnection;
+import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
@@ -23,15 +26,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Repository
 @RequiredArgsConstructor
@@ -79,8 +83,8 @@ public class IndicatorRepository {
 
     private static final int MAX_QUEUE_SIZE = 200;
 
-    private static final ThreadPoolExecutor uploadExecutor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE,
-            60, TimeUnit.SECONDS,
+    private static final ThreadPoolExecutor copyExecutor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE,
+            60,TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
 
     public String createOrUpdateIndicator(BivariateIndicatorDto bivariateIndicatorDto, String owner, boolean update)
@@ -102,7 +106,7 @@ public class IndicatorRepository {
 
     // TODO: optimize copying large files to PostgreSQL in #15737
     @Transactional
-    public Future<?> uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
+    public long uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
         if (update) {
             jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
                     transposedTableName, uuid));
@@ -110,18 +114,25 @@ public class IndicatorRepository {
 
         var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
-        try {
-            Connection connection = DataSourceUtils.getConnection(dataSource);
+        try (Connection connection = DataSourceUtils.getConnection(dataSource);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                return uploadExecutor.submit(() -> {
-                    try {
-                        copyManager.copyIn(copyManagerQuery, inputStream);
-                    } catch (Exception e) {
-                        logger.error("Unable to copy csv stream with uuid: " + uuid + ". " + e.getMessage(), e);
-                        throw new IndicatorDataProcessingException(e.getMessage(), e);
+                CopyIn copyIn = copyManager.copyIn(copyManagerQuery);
+                try {
+                    String row;
+                    while ((row = reader.readLine()) != null) {
+                        String[] rowValues = row.split(",");
+                        String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1], "\n");
+                        byte[] bytes = transformedRow.getBytes();
+                        copyIn.writeToCopy(bytes, 0, bytes.length);
                     }
-                });
+                    return copyIn.endCopy();
+                } finally {
+                    if (copyIn.isActive()) {
+                        copyIn.cancelCopy();
+                    }
+                }
             } else {
                 logger.error("Could not connect to Copy Manager");
                 throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +
@@ -250,6 +261,6 @@ public class IndicatorRepository {
 
     @PreDestroy
     public void shutdown() {
-        uploadExecutor.shutdown();
+        copyExecutor.shutdown();
     }
 }

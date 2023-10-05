@@ -35,6 +35,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.*;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 @Service
 @AllArgsConstructor
 public class IndicatorService {
@@ -101,25 +103,25 @@ public class IndicatorService {
             return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST,
                     "Could not process request, neither indicator nor h3 indexes were created");
         } catch (FileUploadException | IOException | ValidationException exception) {
-            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage());
+            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         } catch (NoSuchElementException exception) {
             return logAndReturnErrorWithMessage(HttpStatus.UNAUTHORIZED,
-                    "Incorrect authentication data: could not get username");
+                    "Incorrect authentication data: could not get username", exception);
         } catch (BivariateIndicatorsPRViolationException exception) {
-            return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+            return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage(), exception);
         } catch (IndicatorDataProcessingException exception) {
             if (!update) {
                 indicatorRepository.deleteIndicator(uuid);
             }
-            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage());
+            return logAndReturnErrorWithMessage(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         } catch (Exception exception) {
             if (update) {
                 return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Could not update indicator");
+                        "Could not update indicator", exception);
             } else {
                 indicatorRepository.deleteIndicator(uuid);
                 return logAndReturnErrorWithMessage(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Could not process request, neither indicator nor h3 indexes were created");
+                        "Could not process request, neither indicator nor h3 indexes were created", exception);
             }
         }
     }
@@ -188,35 +190,8 @@ public class IndicatorService {
     }
 
     private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
-        try (PipedInputStream pipedInputStream = new PipedInputStream();
-             PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream)) {
-
-            Future<?> writeTask = uploadExecutor.submit(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
-                        StandardCharsets.UTF_8));
-                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
-                             StandardCharsets.UTF_8))) {
-                    String row;
-                    while ((row = reader.readLine()) != null) {
-                        String[] rowValues = row.split(",");
-                        writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
-                        writer.newLine();
-                    }
-                    writer.flush();
-                    logger.info("Successfully adjusted incoming CSV with uuid: " + uuid);
-                } catch (IOException e) {
-                    logger.error("Unable to adjust incoming csv stream with uuid: " + uuid + ". " + e.getMessage(), e);
-                    throw new IndicatorDataProcessingException(e.getMessage(), e);
-                }
-            });
-
-            Future<?> copyTask = indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
-
-            writeTask.get();
-            copyTask.get();
-        } catch (Exception e) {
-            throw new IndicatorDataProcessingException("Unable to copy the CSV file to database", e);
-        }
+        long rowsInserted = indicatorRepository.uploadCsvFileIntoStatH3Table(file, uuid, update);
+        logger.info("Successfully uploaded file: " + uuid + ". Rows inserted: " + rowsInserted);
     }
 
     private String generateExceptionMessage(String fieldName) {
@@ -235,6 +210,11 @@ public class IndicatorService {
 
     private ResponseEntity<String> logAndReturnErrorWithMessage(HttpStatus status, String message) {
         logger.error(message);
+        return ResponseEntity.status(status).body(message);
+    }
+
+    private ResponseEntity<String> logAndReturnErrorWithMessage(HttpStatus status, String message, Exception e) {
+        logger.error(message, e);
         return ResponseEntity.status(status).body(message);
     }
 

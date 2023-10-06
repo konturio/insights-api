@@ -17,7 +17,7 @@ spring:
       pool-name: HikariPool-1
       connection-timeout: 600000
       validation-timeout: 1000
-      maximum-pool-size: 10
+      maximum-pool-size: 100
   jdbc:
     template:
       query-timeout: 1800

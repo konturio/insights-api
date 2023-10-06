@@ -9,7 +9,6 @@ import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.fileupload.FileItemStream;
-import org.postgresql.PGConnection;
 import org.postgresql.copy.CopyIn;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
@@ -20,14 +19,12 @@ import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import java.io.BufferedReader;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.Timestamp;
@@ -106,12 +103,13 @@ public class IndicatorRepository {
 
     // TODO: optimize copying large files to PostgreSQL in #15737
     @Transactional
-    public long uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
+    public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
+        logger.info("Start processing CSV file: " + uuid);
         if (update) {
             jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
                     transposedTableName, uuid));
+            logger.info("Successfully deleted indicator from the DB: " + uuid);
         }
-
         var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
         try (Connection connection = dataSource.getConnection();
@@ -119,6 +117,7 @@ public class IndicatorRepository {
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
                 CopyIn copyIn = copyManager.copyIn(copyManagerQuery);
+                logger.info("Successfully obtained DB connection. Start copying: " + uuid);
                 try {
                     String row;
                     while ((row = reader.readLine()) != null) {
@@ -128,9 +127,12 @@ public class IndicatorRepository {
                         byte[] bytes = transformedRow.getBytes();
                         copyIn.writeToCopy(bytes, 0, bytes.length);
                     }
-                    return copyIn.endCopy();
+                    logger.info("Ending copy to the DB: " + uuid);
+                    long rowsInserted = copyIn.endCopy();
+                    logger.info("Successfully uploaded file: " + uuid + ". Rows inserted: " + rowsInserted);
                 } finally {
                     if (copyIn.isActive()) {
+                        logger.info("Cancelling copy to DB: " + uuid);
                         copyIn.cancelCopy();
                     }
                 }

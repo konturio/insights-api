@@ -28,14 +28,12 @@ import javax.annotation.PreDestroy;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.*;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Service
 @AllArgsConstructor
@@ -190,8 +188,7 @@ public class IndicatorService {
     }
 
     private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
-        long rowsInserted = indicatorRepository.uploadCsvFileIntoStatH3Table(file, uuid, update);
-        logger.info("Successfully uploaded file: " + uuid + ". Rows inserted: " + rowsInserted);
+        indicatorRepository.uploadCsvFileIntoStatH3Table(file, uuid, update);
     }
 
     private String generateExceptionMessage(String fieldName) {

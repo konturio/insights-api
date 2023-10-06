@@ -110,27 +110,33 @@ public class IndicatorRepository {
                     transposedTableName, uuid));
             logger.info("Successfully deleted indicator from the DB: " + uuid);
         }
-        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
+        var copyManagerQuery = String.format("COPY %s FROM STDIN FORMAT CSV DELIMITER ',' null 'NULL'", transposedTableName);
 
+        boolean test = false;
         try (Connection connection = dataSource.getConnection();
              BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
             if (connection.isWrapperFor(Connection.class)) {
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
                 CopyIn copyIn = copyManager.copyIn(copyManagerQuery);
                 logger.info("Successfully obtained DB connection. Start copying: " + uuid);
+                long rows = 0;
                 try {
                     String row;
                     while ((row = reader.readLine()) != null) {
+                        test = true;
                         String[] rowValues = row.split(",");
                         String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1]);
                         transformedRow += "\n";
                         byte[] bytes = transformedRow.getBytes();
+                        rows += 1;
                         copyIn.writeToCopy(bytes, 0, bytes.length);
+                        test = false;
                     }
                     logger.info("Ending copy to the DB: " + uuid);
                     long rowsInserted = copyIn.endCopy();
                     logger.info("Successfully uploaded file: " + uuid + ". Rows inserted: " + rowsInserted);
                 } finally {
+                    logger.info("Read " + rows + " rows from stream: " + uuid);
                     if (copyIn.isActive()) {
                         logger.info("Cancelling copy to DB: " + uuid);
                         copyIn.cancelCopy();
@@ -142,6 +148,7 @@ public class IndicatorRepository {
                         "Can not obtain connection for CopyManager");
             }
         } catch (Exception e) {
+            logger.info(test ? "Copying last line broke: " + uuid : "Reading end of file breaks: " + uuid);
             throw new IndicatorDataProcessingException(e.getMessage(), e);
         }
     }

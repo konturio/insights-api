@@ -110,7 +110,7 @@ public class IndicatorRepository {
                     transposedTableName, uuid));
             logger.info("Successfully deleted indicator from the DB: " + uuid);
         }
-        var copyManagerQuery = String.format("COPY %s FROM STDIN FORMAT CSV DELIMITER ',' null 'NULL'", transposedTableName);
+        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
 
         boolean test = false;
         try (Connection connection = dataSource.getConnection();

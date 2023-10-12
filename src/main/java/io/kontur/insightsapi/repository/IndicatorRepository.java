@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.dto.IndicatorState;
 import io.kontur.insightsapi.exception.BivariateIndicatorsPRViolationException;
-import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.fileupload.FileItemStream;
@@ -22,16 +21,16 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.*;
 
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Repository
@@ -74,16 +73,6 @@ public class IndicatorRepository {
     @Value("${calculations.useStatSeparateTables:false}")
     private Boolean useStatSeparateTables;
 
-    private static final int CORE_POOL_SIZE = 100;
-
-    private static final int MAX_POOL_SIZE = 150;
-
-    private static final int MAX_QUEUE_SIZE = 200;
-
-    private static final ThreadPoolExecutor copyExecutor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE,
-            60,TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
-
     public String createOrUpdateIndicator(BivariateIndicatorDto bivariateIndicatorDto, String owner, boolean update)
             throws JsonProcessingException {
 
@@ -91,65 +80,49 @@ public class IndicatorRepository {
         String bivariateIndicatorsQuery;
 
         if (update) {
-            bivariateIndicatorsQuery = String.format(queryFactory.getSql(updateBivariateIndicators),
+            bivariateIndicatorsQuery = format(queryFactory.getSql(updateBivariateIndicators),
                     bivariateIndicatorsMetadataTableName, owner);
         } else {
-            bivariateIndicatorsQuery = String.format(queryFactory.getSql(insertBivariateIndicators),
+            bivariateIndicatorsQuery = format(queryFactory.getSql(insertBivariateIndicators),
                     bivariateIndicatorsMetadataTableName);
         }
 
         return namedParameterJdbcTemplate.queryForObject(bivariateIndicatorsQuery, paramSource, String.class);
     }
 
-    // TODO: optimize copying large files to PostgreSQL in #15737
-    @Transactional
     public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
-        logger.info("Start processing CSV file: " + uuid);
-        if (update) {
-            jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
-                    transposedTableName, uuid));
-            logger.info("Successfully deleted indicator from the DB: " + uuid);
-        }
-        var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
-
-        boolean test = false;
         try (Connection connection = dataSource.getConnection();
              BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
-            if (connection.isWrapperFor(Connection.class)) {
+            connection.setAutoCommit(false);
+            try {
+                if (update) {
+                    PreparedStatement ps = connection.prepareStatement(format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
+                            transposedTableName, uuid));
+                    ps.executeUpdate();
+                }
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
-                CopyIn copyIn = copyManager.copyIn(copyManagerQuery);
-                logger.info("Successfully obtained DB connection. Start copying: " + uuid);
-                long rows = 0;
+                CopyIn copyIn = copyManager.copyIn(format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName));
                 try {
                     String row;
                     while ((row = reader.readLine()) != null) {
-                        test = true;
                         String[] rowValues = row.split(",");
-                        String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1]);
-                        transformedRow += "\n";
+                        String transformedRow = String.join(",", rowValues[0], uuid, rowValues[1]) + "\n";
                         byte[] bytes = transformedRow.getBytes();
-                        rows += 1;
                         copyIn.writeToCopy(bytes, 0, bytes.length);
-                        test = false;
                     }
-                    logger.info("Ending copy to the DB: " + uuid);
-                    long rowsInserted = copyIn.endCopy();
-                    logger.info("Successfully uploaded file: " + uuid + ". Rows inserted: " + rowsInserted);
+                    copyIn.endCopy();
                 } finally {
-                    logger.info("Read " + rows + " rows from stream: " + uuid);
                     if (copyIn.isActive()) {
-                        logger.info("Cancelling copy to DB: " + uuid);
                         copyIn.cancelCopy();
                     }
                 }
-            } else {
-                logger.error("Could not connect to Copy Manager");
-                throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +
-                        "Can not obtain connection for CopyManager");
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                throw new RuntimeException(e.getMessage(), e);
             }
         } catch (Exception e) {
-            logger.info(test ? "Copying last line broke: " + uuid : "Reading end of file breaks: " + uuid);
-            throw new IndicatorDataProcessingException(e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -157,26 +130,26 @@ public class IndicatorRepository {
         String tempMessage = message.substring(message.indexOf(", line") + 2, message.indexOf(", column",
                 message.indexOf(", line")));
         if (message.contains("stringToH3")) {
-            return String.format("Unable to represent %s from the file as H3", tempMessage);
+            return format("Unable to represent %s from the file as H3", tempMessage);
         } else if (message.contains("valid_cell")) {
-            return String.format("Incorrect H3index found in the file: %s", message.substring(message.indexOf(", line")
+            return format("Incorrect H3index found in the file: %s", message.substring(message.indexOf(", line")
                     + 2, message.indexOf(": \"", message.indexOf(", line"))));
         } else if (message.contains("double precision")) {
-            return String.format("Incorrect value found in the file: %s", tempMessage);
+            return format("Incorrect value found in the file: %s", tempMessage);
         } else {
             return message;
         }
     }
 
     public void deleteIndicator(String uuid) {
-        jdbcTemplate.update(String.format("DELETE FROM %s WHERE param_uuid = '%s'::uuid",
+        jdbcTemplate.update(format("DELETE FROM %s WHERE param_uuid = '%s'::uuid",
                 bivariateIndicatorsMetadataTableName, uuid));
     }
 
     public BivariateIndicatorDto getIndicatorByIdAndOwner(String id, String owner)
             throws BivariateIndicatorsPRViolationException {
         List<BivariateIndicatorDto> bivariateIndicatorDtos = jdbcTemplate.query(
-                String.format("SELECT * FROM %s WHERE param_id = '%s' AND owner = '%s'",
+                format("SELECT * FROM %s WHERE param_id = '%s' AND owner = '%s'",
                         bivariateIndicatorsMetadataTableName,
                         id,
                         owner),
@@ -185,7 +158,7 @@ public class IndicatorRepository {
         return switch (bivariateIndicatorDtos.size()) {
             case 0 -> null;
             case 1 -> bivariateIndicatorDtos.get(0);
-            default -> throw new BivariateIndicatorsPRViolationException(String.format("More then one indicator " +
+            default -> throw new BivariateIndicatorsPRViolationException(format("More then one indicator " +
                     "found with name: %s, for user: %s", id, owner));
         };
     }
@@ -221,20 +194,20 @@ public class IndicatorRepository {
     //TODO: possibly will be added something about owner field here
     @Transactional(readOnly = true)
     public List<BivariateIndicatorDto> getAllBivariateIndicators() {
-        return jdbcTemplate.query(String.format("SELECT * FROM %s", bivariateIndicatorsMetadataTableName),
+        return jdbcTemplate.query(format("SELECT * FROM %s", bivariateIndicatorsMetadataTableName),
                 bivariateIndicatorRowMapper);
     }
 
     // TODO: use owner here as param_id alone is no longer considered to be unique
     @Transactional(readOnly = true)
     public List<BivariateIndicatorDto> getSelectedBivariateIndicators(List<String> indicatorIds) {
-        return jdbcTemplate.query(String.format("SELECT * FROM %s WHERE param_id in ('%s')",
+        return jdbcTemplate.query(format("SELECT * FROM %s WHERE param_id in ('%s')",
                         bivariateIndicatorsMetadataTableName, String.join("','", indicatorIds)),
                 bivariateIndicatorRowMapper);
     }
 
     public BivariateIndicatorDto getIndicatorByUuid(String uuid) {
-        return jdbcTemplate.queryForObject(String.format("SELECT * FROM %s where param_uuid = '%s'::uuid",
+        return jdbcTemplate.queryForObject(format("SELECT * FROM %s where param_uuid = '%s'::uuid",
                 bivariateIndicatorsMetadataTableName, uuid), bivariateIndicatorRowMapper);
     }
 
@@ -243,23 +216,23 @@ public class IndicatorRepository {
     public String getLabelByParamId(String paramId) {
         String bivariateIndicatorsTable = useStatSeparateTables ? bivariateIndicatorsMetadataTableName
                 : bivariateIndicatorsTableName;
-        return jdbcTemplate.queryForObject(String.format("SELECT param_label FROM %s where param_id = '%s'",
+        return jdbcTemplate.queryForObject(format("SELECT param_label FROM %s where param_id = '%s'",
                 bivariateIndicatorsTable, paramId), String.class);
     }
 
     public void updateIndicatorsLastUpdateDate(Instant lastUpdated) {
-        jdbcTemplate.update(String.format("UPDATE %s SET last_updated = '%s'", bivariateIndicatorsMetadataTableName,
+        jdbcTemplate.update(format("UPDATE %s SET last_updated = '%s'", bivariateIndicatorsMetadataTableName,
                 Timestamp.from(lastUpdated)));
     }
 
     public Instant getIndicatorsLastUpdateDate() {
-        Timestamp lastUpdated = jdbcTemplate.queryForObject(String.format("SELECT MAX(last_updated) FROM %s",
+        Timestamp lastUpdated = jdbcTemplate.queryForObject(format("SELECT MAX(last_updated) FROM %s",
                 bivariateIndicatorsMetadataTableName), Timestamp.class);
         return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
 
     public void updateIndicatorState(String uuid, IndicatorState state) {
-        jdbcTemplate.update(String.format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
+        jdbcTemplate.update(format("UPDATE %s SET state = '%s' WHERE param_uuid = '%s'::uuid",
                 bivariateIndicatorsMetadataTableName, state.name(), uuid));
     }
 
@@ -267,10 +240,5 @@ public class IndicatorRepository {
         jdbcTemplate.execute("SET enable_hashjoin = off");
         jdbcTemplate.execute(queryFactory.getSql(updateStatH3Geom));
         jdbcTemplate.execute("RESET enable_hashjoin");
-    }
-
-    @PreDestroy
-    public void shutdown() {
-        copyExecutor.shutdown();
     }
 }

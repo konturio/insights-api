@@ -96,9 +96,12 @@ public class IndicatorRepository {
             connection.setAutoCommit(false);
             try {
                 if (update) {
-                    PreparedStatement ps = connection.prepareStatement(format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
-                            transposedTableName, uuid));
-                    ps.executeUpdate();
+                    try (PreparedStatement ps = connection.prepareStatement(format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
+                            transposedTableName, uuid))) {
+                        ps.executeUpdate();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e.getMessage(), e);
+                    }
                 }
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
                 CopyIn copyIn = copyManager.copyIn(format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName));

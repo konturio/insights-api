@@ -11,6 +11,7 @@ import io.kontur.insightsapi.repository.IndicatorRepository;
 import io.kontur.insightsapi.service.auth.AuthService;
 import lombok.AllArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.apache.catalina.connector.ClientAbortException;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
@@ -195,9 +196,14 @@ public class IndicatorService {
 
             uploadExecutor.submit(() -> {
                 long rowCounter = 0;
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), StandardCharsets.US_ASCII));
+                long uploadStartTime = System.currentTimeMillis();
+                try (InputStream fileInputStream = file.openStream();
+                     InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, StandardCharsets.US_ASCII);
+                     BufferedReader reader = new BufferedReader(inputStreamReader);
                      PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
-                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8))) {
+                     OutputStreamWriter outputStreamWriter = new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8);
+                     BufferedWriter writer = new BufferedWriter(outputStreamWriter)) {
+                    logger.info("Started reading file: " + uuid);
                     String row;
                     while ((row = reader.readLine()) != null) {
                         String[] rowValues = row.split(",");
@@ -205,18 +211,15 @@ public class IndicatorService {
                         writer.newLine();
                         rowCounter += 1;
                     }
-                } catch (EOFException e) {
-                    logger.error(String.format("Reached the end of file unexpectedly. Read %d lines. UUID: %s. %s", rowCounter, uuid, e.getMessage()), e);
+                    logger.info("Finished reading file: " + uuid);
                 } catch (IOException e) {
-                    logger.error(e.getMessage(), e);
-                    throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid: " + uuid, e);
+                    long uploadTimeInSeconds = (System.currentTimeMillis() - uploadStartTime) / 1000;
+                    logger.error(String.format("Unable to adjust incoming csv stream with uuid. Read %d lines in %s seconds. UUID: %s. %s",
+                            rowCounter, uploadTimeInSeconds, uuid, e.getMessage()), e);
                 }
             });
 
             indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
-        } catch (Exception e) {
-            logger.error(e.getMessage(), e);
-            throw new IndicatorDataProcessingException(e.getMessage(), e);
         }
     }
 

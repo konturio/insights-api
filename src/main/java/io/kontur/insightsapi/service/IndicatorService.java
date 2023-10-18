@@ -191,14 +191,13 @@ public class IndicatorService {
 
     private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
 
-        try (PipedInputStream pipedInputStream = new PipedInputStream();
-             PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
-             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8))) {
+        try (PipedInputStream pipedInputStream = new PipedInputStream()) {
 
             uploadExecutor.submit(() -> {
                 long rowCounter = 0;
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
-                        StandardCharsets.US_ASCII))) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), StandardCharsets.US_ASCII));
+                     PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8))) {
                     String row;
                     while ((row = reader.readLine()) != null) {
                         String[] rowValues = row.split(",");

@@ -37,8 +37,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import static java.lang.String.format;
-
 @Service
 @AllArgsConstructor
 public class IndicatorService {
@@ -157,7 +155,7 @@ public class IndicatorService {
             Instant executionEndTime = Instant.now();
             Duration executionTime = Duration.between(executionStartTime, executionEndTime);
             logger.info("Geometry update job has been executed successfully and took {}",
-                    format("%d hours %02d minutes %02d seconds",
+                    String.format("%d hours %02d minutes %02d seconds",
                             executionTime.toHours(), executionTime.toMinutesPart(), executionTime.toSecondsPart()));
         } catch (Exception e) {
             logger.error("Error executing geometry update job", e);
@@ -209,7 +207,7 @@ public class IndicatorService {
                         rowCounter += 1;
                     }
                 } catch (EOFException e) {
-                    logger.error(format("Reached the end of file unexpectedly. Read %d lines. UUID: %s. %s", rowCounter, uuid, e.getMessage()), e);
+                    logger.error(String.format("Reached the end of file unexpectedly. Read %d lines. UUID: %s. %s", rowCounter, uuid, e.getMessage()), e);
                 } catch (IOException e) {
                     logger.error(e.getMessage(), e);
                     throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid: " + uuid, e);
@@ -228,12 +226,12 @@ public class IndicatorService {
             return "Incorrect parameters json";
         }
         return switch (fieldName) {
-            case "isPublic", "isBase" -> format("%s field supports only boolean values", fieldName);
-            case "id", "label" -> format("%s field supports only string values", fieldName);
+            case "isPublic", "isBase" -> String.format("%s field supports only boolean values", fieldName);
+            case "id", "label" -> String.format("%s field supports only string values", fieldName);
             case "copyrights", "allowedUsers" ->
-                    format("Incorrect type of %s field, array expected.", fieldName);
-            case "direction" -> format("Incorrect type of %s field, array of arrays expected.", fieldName);
-            default -> format("Incorrect type of %s field", fieldName);
+                    String.format("Incorrect type of %s field, array expected.", fieldName);
+            case "direction" -> String.format("Incorrect type of %s field, array of arrays expected.", fieldName);
+            default -> String.format("Incorrect type of %s field", fieldName);
         };
     }
 

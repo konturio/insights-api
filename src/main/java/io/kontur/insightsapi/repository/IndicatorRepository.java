@@ -106,7 +106,7 @@ public class IndicatorRepository {
                         "Can not obtain connection for CopyManager");
             }
         } catch (Exception e) {
-            throw new IndicatorDataProcessingException(adjustMessageForKnownExceptions(e.getMessage()), e);
+            throw new IndicatorDataProcessingException(e.getMessage(), e);
         }
     }
 

@@ -37,6 +37,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.String.format;
+
 @Service
 @AllArgsConstructor
 public class IndicatorService {
@@ -155,7 +157,7 @@ public class IndicatorService {
             Instant executionEndTime = Instant.now();
             Duration executionTime = Duration.between(executionStartTime, executionEndTime);
             logger.info("Geometry update job has been executed successfully and took {}",
-                    String.format("%d hours %02d minutes %02d seconds",
+                    format("%d hours %02d minutes %02d seconds",
                             executionTime.toHours(), executionTime.toMinutesPart(), executionTime.toSecondsPart()));
         } catch (Exception e) {
             logger.error("Error executing geometry update job", e);
@@ -190,26 +192,35 @@ public class IndicatorService {
     }
 
     private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
-        PipedInputStream pipedInputStream = new PipedInputStream();
-        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
 
-        uploadExecutor.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
-                    StandardCharsets.UTF_8));
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream,
-                         StandardCharsets.UTF_8))) {
-                String row;
-                while ((row = reader.readLine()) != null) {
-                    String[] rowValues = row.split(",");
-                    writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
-                    writer.newLine();
+        try (PipedInputStream pipedInputStream = new PipedInputStream();
+             PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8))) {
+
+            uploadExecutor.submit(() -> {
+                long rowCounter = 0;
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(),
+                        StandardCharsets.US_ASCII))) {
+                    String row;
+                    while ((row = reader.readLine()) != null) {
+                        String[] rowValues = row.split(",");
+                        writer.write(String.join(",", rowValues[0], uuid, rowValues[1]));
+                        writer.newLine();
+                        rowCounter += 1;
+                    }
+                } catch (EOFException e) {
+                    logger.error(format("Reached the end of file unexpectedly. Read %d lines. UUID: %s. %s", rowCounter, uuid, e.getMessage()), e);
+                } catch (IOException e) {
+                    logger.error(e.getMessage(), e);
+                    throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid: " + uuid, e);
                 }
-            } catch (IOException e) {
-                throw new IndicatorDataProcessingException("Unable to adjust incoming csv stream with uuid", e);
-            }
-        });
+            });
 
-        indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
+            indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            throw new IndicatorDataProcessingException(e.getMessage(), e);
+        }
     }
 
     private String generateExceptionMessage(String fieldName) {
@@ -217,12 +228,12 @@ public class IndicatorService {
             return "Incorrect parameters json";
         }
         return switch (fieldName) {
-            case "isPublic", "isBase" -> String.format("%s field supports only boolean values", fieldName);
-            case "id", "label" -> String.format("%s field supports only string values", fieldName);
+            case "isPublic", "isBase" -> format("%s field supports only boolean values", fieldName);
+            case "id", "label" -> format("%s field supports only string values", fieldName);
             case "copyrights", "allowedUsers" ->
-                    String.format("Incorrect type of %s field, array expected.", fieldName);
-            case "direction" -> String.format("Incorrect type of %s field, array of arrays expected.", fieldName);
-            default -> String.format("Incorrect type of %s field", fieldName);
+                    format("Incorrect type of %s field, array expected.", fieldName);
+            case "direction" -> format("Incorrect type of %s field, array of arrays expected.", fieldName);
+            default -> format("Incorrect type of %s field", fieldName);
         };
     }
 

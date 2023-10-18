@@ -59,7 +59,6 @@ public class IndicatorService {
             60, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
 
-    @Transactional
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
         String uuid = "";
         boolean update = false;
@@ -88,7 +87,7 @@ public class IndicatorService {
                     itemIndex++;
                 } else if (!item.isFormField() && "file".equals(name) && itemIndex == 1) {
                     if (Strings.isNotEmpty(uuid)) {
-                        processAndUploadCsvFile(item, uuid, update);
+                        indicatorRepository.uploadCsvFileIntoStatH3Table(item, uuid, update);
                         return ResponseEntity.ok().body(uuid);
                     }
                 } else {
@@ -185,10 +184,6 @@ public class IndicatorService {
         } catch (MismatchedInputException exception) {
             throw new IOException(generateExceptionMessage(exception.getPath().get(0).getFieldName()));
         }
-    }
-
-    private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
-        indicatorRepository.uploadCsvFileIntoStatH3Table(file, uuid, update);
     }
 
     private String generateExceptionMessage(String fieldName) {

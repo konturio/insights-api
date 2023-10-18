@@ -31,7 +31,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static java.lang.String.format;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 @Repository
 @RequiredArgsConstructor
@@ -92,7 +92,7 @@ public class IndicatorRepository {
 
     public void uploadCsvFileIntoStatH3Table(FileItemStream file, String uuid, boolean update) {
         try (Connection connection = dataSource.getConnection();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), UTF_8))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(file.openStream(), US_ASCII))) {
             connection.setAutoCommit(false);
             try {
                 if (update) {

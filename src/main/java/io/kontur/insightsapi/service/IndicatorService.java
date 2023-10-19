@@ -11,7 +11,6 @@ import io.kontur.insightsapi.repository.IndicatorRepository;
 import io.kontur.insightsapi.service.auth.AuthService;
 import lombok.AllArgsConstructor;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.apache.catalina.connector.ClientAbortException;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
@@ -46,8 +45,6 @@ public class IndicatorService {
 
     private final IndicatorRepository indicatorRepository;
 
-    private final ServletFileUpload upload;
-
     private final ObjectMapper objectMapper;
 
     private final AuthService authService;
@@ -69,6 +66,7 @@ public class IndicatorService {
 
         try {
             BivariateIndicatorDto incomingBivariateIndicatorDto;
+            ServletFileUpload upload = new ServletFileUpload();
             FileItemIterator itemIterator = upload.getItemIterator(request);
             int itemIndex = 0;
 

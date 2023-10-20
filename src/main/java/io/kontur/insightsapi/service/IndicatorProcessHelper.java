@@ -46,32 +46,32 @@ public class IndicatorProcessHelper {
         long uploadEndTime = System.currentTimeMillis();
         long uploadTimeInSeconds = (uploadEndTime - uploadStartTime) / 1000;
 
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null
-                && response.getBody().length() == UUID_STRING_LENGTH) {
-            String uuid = response.getBody();
-
-            logger.info("Upload of csv file for indicator with uuid {} has been done successfully and took {}", uuid,
-                    String.format("%02d hours %02d minutes %02d seconds", uploadTimeInSeconds / 3600,
-                            (uploadTimeInSeconds % 3600) / 60, (uploadTimeInSeconds % 60)));
-
-            calculationExecutor.submit(() -> {
-                List<BivariateIndicatorDto> incomingBivariateIndicatorDtoAsList =
-                        List.of(indicatorService.getIndicatorByUuid(uuid));
-
-                logger.info("Start calculations for indicator with uuid {}", uuid);
-                long calculationStartTime = System.currentTimeMillis();
-
-                axisService.createAxis(incomingBivariateIndicatorDtoAsList);
-
-                long calculationEndTime = System.currentTimeMillis();
-                long calculationTimeInSeconds = (calculationEndTime - calculationStartTime) / 1000;
-                logger.info("Calculations for indicator with uuid {} have been done successfully and took {}", uuid,
-                        String.format("%02d hours %02d minutes %02d seconds", calculationTimeInSeconds / 3600,
-                                (calculationTimeInSeconds % 3600) / 60, (calculationTimeInSeconds % 60)));
-                indicatorService.updateIndicatorState(uuid, IndicatorState.READY);
-            });
-        }
-        logger.info("Current queue size with indicators to process: {}", calculationExecutor.getQueue().size());
+//        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null
+//                && response.getBody().length() == UUID_STRING_LENGTH) {
+//            String uuid = response.getBody();
+//
+//            logger.info("Upload of csv file for indicator with uuid {} has been done successfully and took {}", uuid,
+//                    String.format("%02d hours %02d minutes %02d seconds", uploadTimeInSeconds / 3600,
+//                            (uploadTimeInSeconds % 3600) / 60, (uploadTimeInSeconds % 60)));
+//
+//            calculationExecutor.submit(() -> {
+//                List<BivariateIndicatorDto> incomingBivariateIndicatorDtoAsList =
+//                        List.of(indicatorService.getIndicatorByUuid(uuid));
+//
+//                logger.info("Start calculations for indicator with uuid {}", uuid);
+//                long calculationStartTime = System.currentTimeMillis();
+//
+//                axisService.createAxis(incomingBivariateIndicatorDtoAsList);
+//
+//                long calculationEndTime = System.currentTimeMillis();
+//                long calculationTimeInSeconds = (calculationEndTime - calculationStartTime) / 1000;
+//                logger.info("Calculations for indicator with uuid {} have been done successfully and took {}", uuid,
+//                        String.format("%02d hours %02d minutes %02d seconds", calculationTimeInSeconds / 3600,
+//                                (calculationTimeInSeconds % 3600) / 60, (calculationTimeInSeconds % 60)));
+//                indicatorService.updateIndicatorState(uuid, IndicatorState.READY);
+//            });
+//        }
+//        logger.info("Current queue size with indicators to process: {}", calculationExecutor.getQueue().size());
 
         return response;
     }

@@ -87,12 +87,12 @@ public class IndicatorRepository {
 
     // TODO: optimize copying large files to PostgreSQL in #15737
     @Transactional
-    public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, boolean update) {
+    public void uploadCsvFileIntoStatH3Table(InputStream inputStream, String uuid, String paramId, boolean update) {
         if (update) {
-            logger.info("Started deleting old indicator data: " + uuid);
+            logger.info("Started deleting old indicator data: " + paramId);
             jdbcTemplate.update(String.format("DELETE FROM %s WHERE indicator_uuid = '%s'::uuid",
                     transposedTableName, uuid));
-            logger.info("Finished deleting old indicator data: " + uuid);
+            logger.info("Finished deleting old indicator data: " + paramId);
         }
 
         var copyManagerQuery = String.format("COPY %s FROM STDIN DELIMITER ',' null 'NULL'", transposedTableName);
@@ -100,10 +100,10 @@ public class IndicatorRepository {
         try {
             Connection connection = DataSourceUtils.getConnection(dataSource);
             if (connection.isWrapperFor(Connection.class)) {
-                logger.info("Started copying data: " + uuid);
+                logger.info("Started copying data: " + paramId);
                 CopyManager copyManager = new CopyManager((BaseConnection) connection.unwrap(Connection.class));
                 copyManager.copyIn(copyManagerQuery, inputStream);
-                logger.info("Finished copying data: " + uuid);
+                logger.info("Finished copying data: " + paramId);
             } else {
                 logger.error("Could not connect to Copy Manager");
                 throw new IndicatorDataProcessingException("Connection was closed unpredictably. " +

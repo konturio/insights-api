@@ -62,6 +62,7 @@ public class IndicatorService {
     @Transactional
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request) {
         String uuid = "";
+        String paramId = "";
         boolean update = false;
 
         try {
@@ -86,10 +87,12 @@ public class IndicatorService {
                     }
 
                     uuid = indicatorRepository.createOrUpdateIndicator(incomingBivariateIndicatorDto, owner, update);
+                    paramId = incomingBivariateIndicatorDto.getId();
                     itemIndex++;
                 } else if (!item.isFormField() && "file".equals(name) && itemIndex == 1) {
                     if (Strings.isNotEmpty(uuid)) {
-                        processAndUploadCsvFile(item, uuid, update);
+                        processAndUploadCsvFile(item, uuid, paramId, update);
+                        logger.info("Returning success response: " + paramId);
                         return ResponseEntity.ok().body(uuid);
                     }
                 } else {
@@ -188,20 +191,20 @@ public class IndicatorService {
         }
     }
 
-    private void processAndUploadCsvFile(FileItemStream file, String uuid, boolean update) throws IOException {
+    private void processAndUploadCsvFile(FileItemStream file, String uuid, String paramId, boolean update) throws IOException {
 
         try (PipedInputStream pipedInputStream = new PipedInputStream()) {
 
             uploadExecutor.submit(() -> {
                 long rowCounter = 0;
-                long uploadStartTime = System.currentTimeMillis();
+                long readStartTime = System.currentTimeMillis();
                 try (InputStream fileInputStream = file.openStream();
                      InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, StandardCharsets.US_ASCII);
                      BufferedReader reader = new BufferedReader(inputStreamReader);
                      PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
                      OutputStreamWriter outputStreamWriter = new OutputStreamWriter(pipedOutputStream, StandardCharsets.UTF_8);
                      BufferedWriter writer = new BufferedWriter(outputStreamWriter)) {
-                    logger.info("Started reading file: " + uuid);
+                    logger.info("Started reading file: " + paramId);
                     String row;
                     while ((row = reader.readLine()) != null) {
                         String[] rowValues = row.split(",");
@@ -209,15 +212,15 @@ public class IndicatorService {
                         writer.newLine();
                         rowCounter += 1;
                     }
-                    logger.info("Finished reading file: " + uuid);
+                    logger.info("Finished reading file: " + paramId);
                 } catch (IOException e) {
-                    long uploadTimeInSeconds = (System.currentTimeMillis() - uploadStartTime) / 1000;
-                    logger.error(String.format("Unable to adjust incoming csv stream with uuid. Read %d lines in %s seconds. UUID: %s. %s",
-                            rowCounter, uploadTimeInSeconds, uuid, e.getMessage()), e);
+                    long readTimeInSeconds = (System.currentTimeMillis() - readStartTime) / 1000;
+                    logger.error(String.format("Unable to adjust incoming csv stream with uuid: %s. Read %d lines in %d seconds. %s",
+                            paramId, rowCounter, readTimeInSeconds, e.getMessage()), e);
                 }
             });
 
-            indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, update);
+            indicatorRepository.uploadCsvFileIntoStatH3Table(pipedInputStream, uuid, paramId, update);
         }
     }
 

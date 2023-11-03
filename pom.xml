@@ -29,7 +29,7 @@
         <graphql-spring-boot.version>14.0.0</graphql-spring-boot.version>
         <graphiql-spring-boot.version>11.1.0</graphiql-spring-boot.version>
         <graphql-java-extended-scalars.version>19.0</graphql-java-extended-scalars.version>
-        <postgresql.version>42.5.0</postgresql.version>
+        <postgresql.version>42.5.1</postgresql.version>
         <jts2geojson.version>0.17.0</jts2geojson.version>
         <guava.version>31.1-jre</guava.version>
         <postgresql-testcontainers.version>1.17.4</postgresql-testcontainers.version>

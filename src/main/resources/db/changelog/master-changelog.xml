@@ -10,6 +10,7 @@
     <include  file="create_function_zoom_to_h3_resolution.sql" relativeToChangelogFile="true"/>
     <include  file="refactor_stat_h3_transposed.sql" relativeToChangelogFile="true"/>
 
+    <include  file="add_table_bivariate_indicators.sql" relativeToChangelogFile="true"/>
     <include  file="add_table_bivariate_unit.sql" relativeToChangelogFile="true"/>
     <include  file="add_table_bivariate_unit_localization.sql" relativeToChangelogFile="true"/>
     <include  file="add_table_bivariate_colors.sql" relativeToChangelogFile="true"/>

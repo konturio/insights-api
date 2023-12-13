@@ -37,6 +37,7 @@ jobs:
           MAVEN_CLI_OPTS: '--batch-mode'
           NEXUS_DEPLOYER: ${{ secrets.NEXUS_DEPLOYER }}
           NEXUS_DEPLOYER_PASS: ${{ secrets.NEXUS_DEPLOYER_PASS }}
+          SENTRY_AUTH_TOKEN: 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
           TAG: ${{ github.ref_name }}.${{ steps.get-cloned.outputs.SHA }}.${{ github.run_attempt }}
         run: |-
           set -e

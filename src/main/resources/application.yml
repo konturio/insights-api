@@ -1,3 +1,12 @@
+sentry:
+  dsn: https://3963dbd6083dd5516c1041cce7671175@o4506354031329280.ingest.sentry.io/4506384703881216
+  traces-sample-rate: 1.0
+  debug: false
+  logging:
+    enabled: false
+    minimum-event-level: error
+    minimum-breadcrumb-level: debug
+
 server:
   servlet:
     contextPath: /insights-api

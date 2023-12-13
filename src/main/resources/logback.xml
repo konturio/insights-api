@@ -30,6 +30,10 @@
         </encoder>
     </appender>
 
+
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender" />
+
+
     <appender name="FILE-HTTP-TRACE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>log/insights-api-http-trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">

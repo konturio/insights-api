@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Tag(name = "Population", description = "Population API")
 @RestController
@@ -112,6 +113,9 @@ public class PopulationController {
     @Async
     public CompletableFuture<List<SeveralPolygonsCalculationOutputDto>> calculateSeveralPopulation(@Parameter(description = "The polygons in WKT format to calculate population statistic.")
                                                                                                    @RequestBody List<SeveralPolygonsCalculationInputDto> data) {
+        logger.info("Received data for processing: {}", data.stream()
+                .map(dto -> String.format("Id: %s, Geometry: %s", dto.getId(), dto.getGeometry()))
+                .collect(Collectors.joining("; ")));
         if (CollectionUtils.isEmpty(data)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empty input geometry");
         }
@@ -132,6 +136,13 @@ public class PopulationController {
         });
         Date end = new Date();
         logger.debug("End time: {}. Duration: {} ms", end.toString(), (end.getTime() - start.getTime()));
+        logger.info("Result after processing: {}", result.stream()
+                .map(r -> String.format("Id: %s, Population: %s, Urban: %s, GDP: %s",
+                        r.getId(),
+                        r.getStatistic().getPopulation(),
+                        r.getStatistic().getUrban(),
+                        r.getStatistic().getGdp()))
+                .collect(Collectors.joining("; ")));
         return CompletableFuture.completedFuture(result);
     }
 

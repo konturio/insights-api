@@ -19,5 +19,6 @@
     <include  file="add_table_bivariate_axis_stats_v2.sql" relativeToChangelogFile="true"/>
     <include  file="14855_add_table_shedlock.sql" relativeToChangelogFile="true"/>
     <include  file="16269_use_uuid_as_foreign_key.sql" relativeToChangelogFile="true"/>
+    <include  file="18054_add_field_to_store_emoji_in_bivariate_indicators_metadata_table.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

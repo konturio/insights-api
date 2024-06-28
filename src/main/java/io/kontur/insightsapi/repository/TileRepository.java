@@ -101,7 +101,7 @@ public class TileRepository {
 
             for (BivariateIndicatorDto indicator : bivariateIndicatorDtos) {
                 outerFilter.add(String.format("'%s'", indicator.getInternalId()));
-                columns.add(String.format("coalesce(avg(indicator_value) filter (where indicator_uuid = '%s'), 0) as \"%s\"",
+                columns.add(String.format("avg(indicator_value) filter (where indicator_uuid = '%s') as \"%s\"",
                         indicator.getInternalId(), indicator.getId()));
             }
 
@@ -111,7 +111,7 @@ public class TileRepository {
 
         } else {
             return String.format(queryFactory.getSql(getTileMvtResource),
-                    StringUtils.join(bivariateIndicators.stream().map(current -> String.format("coalesce(%s, 0) as %s",
+                    StringUtils.join(bivariateIndicators.stream().map(current -> String.format("%s as %s",
                             current, current)).toList(), ", "));
         }
     }

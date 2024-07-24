@@ -52,17 +52,30 @@ public class TileController {
                                                       @PathVariable Integer y,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
+        long t0 = System.currentTimeMillis();
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);
         }
+        long t1 = System.currentTimeMillis();
+        log.warn("%d", t1-t0);
+        t0 = System.currentTimeMillis();
+
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        t1 = System.currentTimeMillis();
+        log.warn("%d", t1-t0);
+        t0 = System.currentTimeMillis();
+
         if (lastUpdated == null) {
             // might happen only if there're no READY indicators in DB
             return ResponseEntity.ok()
                     .cacheControl(CacheControl.empty().cachePublic())
                     .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
         }
+        t1 = System.currentTimeMillis();
+        log.warn("%d", t1-t0);
+        t0 = System.currentTimeMillis();
+
 
         String eTag = lastUpdated.toString();
 
@@ -74,6 +87,10 @@ public class TileController {
         if (ifModifiedSinceHeader != null && !ifModifiedSinceHeader.isEmpty()) {
             ifModifiedSince = ZonedDateTime.parse(ifModifiedSinceHeader, HTTP_TIME_FORMATTER);
         }
+        t1 = System.currentTimeMillis();
+        log.warn("%d", t1-t0);
+        t0 = System.currentTimeMillis();
+
         if ((ifNoneMatch != null && ifNoneMatch.equals(eTag)) ||
                 (ifModifiedSince != null && !lastUpdated.isAfter(ifModifiedSince.toInstant()))) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
@@ -82,6 +99,10 @@ public class TileController {
                     .eTag(eTag)
                     .build();
         }
+        t1 = System.currentTimeMillis();
+        log.warn("%d", t1-t0);
+        t0 = System.currentTimeMillis();
+
 
         log.info("Data has been updated. Refreshing tiles");
         return ResponseEntity.ok()

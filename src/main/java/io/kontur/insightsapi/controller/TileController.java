@@ -29,7 +29,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class TileController {
 
-    private final Logger log = LoggerFactory.getLogger(TileController.class);
+    private final Logger log = LoggerFactory.getLogger("httptrace");
 
     private static final DateTimeFormatter HTTP_TIME_FORMATTER = DateTimeFormatter
             .ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneId.of("GMT"));
@@ -52,17 +52,30 @@ public class TileController {
                                                       @PathVariable Integer y,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
+        long t0 = System.currentTimeMillis();
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);
         }
+        long t1 = System.currentTimeMillis();
+        log.warn("{}", t1-t0);
+        t0 = System.currentTimeMillis();
+
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
+        t1 = System.currentTimeMillis();
+        log.warn("{}", t1-t0);
+        t0 = System.currentTimeMillis();
+
         if (lastUpdated == null) {
             // might happen only if there're no READY indicators in DB
             return ResponseEntity.ok()
                     .cacheControl(CacheControl.empty().cachePublic())
                     .body(tileService.getBivariateTileMvt(z, x, y, indicatorsClass));
         }
+        t1 = System.currentTimeMillis();
+        log.warn("{}", t1-t0);
+        t0 = System.currentTimeMillis();
+
 
         String eTag = lastUpdated.toString();
 
@@ -74,17 +87,33 @@ public class TileController {
         if (ifModifiedSinceHeader != null && !ifModifiedSinceHeader.isEmpty()) {
             ifModifiedSince = ZonedDateTime.parse(ifModifiedSinceHeader, HTTP_TIME_FORMATTER);
         }
-        if ((ifNoneMatch != null && ifNoneMatch.equals(eTag)) ||
-                (ifModifiedSince != null && !lastUpdated.isAfter(ifModifiedSince.toInstant()))) {
+        t1 = System.currentTimeMillis();
+        log.warn("{}", t1-t0);
+        t0 = System.currentTimeMillis();
+
+        log.warn("ifNoneMatch {}", ifNoneMatch);
+        log.warn("eTag {}", eTag);
+        log.warn("ifModifiedSince {}", ifModifiedSince);
+        log.warn("lastUpdated {}", lastUpdated);
+        log.warn("request.checkNotModified(eTag) {}", request.checkNotModified(eTag));
+        log.warn("request.checkNotModified(eTag, lastUpdated.toEpochMilli()) {}", request.checkNotModified(eTag, lastUpdated.toEpochMilli()));
+
+        if (request.checkNotModified(eTag) && request.checkNotModified(eTag, lastUpdated.toEpochMilli())) {
+            log.warn("Returning 304");
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
                     .cacheControl(CacheControl.empty().cachePublic())
                     .header("Last-Modified", HTTP_TIME_FORMATTER.format(lastUpdated))
                     .eTag(eTag)
                     .build();
         }
+        t1 = System.currentTimeMillis();
+        log.warn("{}", t1-t0);
+        t0 = System.currentTimeMillis();
+
 
         log.info("Data has been updated. Refreshing tiles");
-        return ResponseEntity.ok()
+        log.warn("Returning 200");
+        return ResponseEntity.status(200)
                 .cacheControl(CacheControl.empty().cachePublic())
                 .header("Last-Modified", HTTP_TIME_FORMATTER.format(lastUpdated))
                 .eTag(eTag)

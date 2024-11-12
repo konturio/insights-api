@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +54,10 @@ public class TileController {
                                                       @RequestParam(required = false) List<String> indicators,
                                                       @RequestParam(defaultValue = "all") String indicatorsClass,
                                                       WebRequest request) {
+        if (indicators != null) {
+            // 20041, 20058 TODO: should be controlled by CORS
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "");
+        }
         if (isRequestInvalid(z, x, y)) {
             return ResponseEntity.ok()
                     .body(new byte[0]);

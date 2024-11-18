@@ -6,7 +6,6 @@ import io.kontur.insightsapi.dto.BivariateIndicatorDto;
 import io.kontur.insightsapi.exception.IndicatorDataProcessingException;
 import io.kontur.insightsapi.mapper.BivariateIndicatorRowMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.fileupload.FileItemStream;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
@@ -14,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.scheduling.annotation.Async;
@@ -79,12 +79,15 @@ public class IndicatorRepository {
 
             connection = DataSourceUtils.getConnection(dataSource);
             connection.setAutoCommit(false);
-            try (Statement stmt = connection.createStatement()) {
-                String applicationName = getUploadAppName(bivariateIndicatorDto.getUploadId());
-                stmt.execute("SET application_name = '" + applicationName + "'");
-            }
 
             String internalId = createIndicator(connection, bivariateIndicatorDto);
+            connection.commit();
+            // now new indicator is visible for other transactions with the state "COPY IN PROGRESS"
+
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("select from bivariate_indicators_metadata where internal_id = '" + internalId + "' for no key update nowait");
+            }
+            // row-level lock will be released when COPY fails or succeeds
 
             Future<?> uploadTask = submitUploadTask(file, internalId, pipedOutputStream);
 
@@ -97,7 +100,11 @@ public class IndicatorRepository {
                 throw new IndicatorDataProcessingException(e.getMessage(), e);
             }
 
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("update bivariate_indicators_metadata set state = 'NEW' where internal_id = '" + internalId + "'");
+            }
             connection.commit();
+            // now new indicator is visible for other transactions with the state "NEW"
             logger.info("Upload of csv file for indicator with uuid {} has been done successfully", bivariateIndicatorDto.getExternalId());
         } catch (Exception e) {
             if (connection != null) {
@@ -189,7 +196,7 @@ public class IndicatorRepository {
     public String getIndicatorIdByUploadId(String owner, String uploadId) {
         try {
             return jdbcTemplate.queryForObject(
-                "SELECT external_id FROM " + bivariateIndicatorsMetadataTableName +
+                "SELECT external_id || '/' || state FROM " + bivariateIndicatorsMetadataTableName +
                 " WHERE owner = ? AND upload_id = ?::uuid",
                 String.class, owner, uploadId);
         } catch (EmptyResultDataAccessException e) {
@@ -197,13 +204,18 @@ public class IndicatorRepository {
         }
     }
 
-    public String getIndicatorUploadProcess(String uploadId) {
+    public void checkActiveUpload(BivariateIndicatorDto indicator) throws Exception {
+        // if the indicator with the same param_id and owner is currently uploading, return its upload id
         try {
-            return jdbcTemplate.queryForObject(
-                "SELECT pid FROM pg_stat_activity where application_name = ?",
-                String.class, getUploadAppName(uploadId));
+            // lookup by partial match: first part of upload_id is always a hash of param_id & owner
+            jdbcTemplate.queryForObject(
+                "select 1 from bivariate_indicators_metadata where param_id = ? and owner = ? and state = 'COPY IN PROGRESS' for no key update nowait",
+                String.class, indicator.getId(), indicator.getOwner());
         } catch (EmptyResultDataAccessException e) {
-            return null;
+            ;
+        } catch (CannotAcquireLockException e) {
+            // COPY process is holding a lock on some row with this param_id
+            throw new IndicatorDataProcessingException("indicator upload already in progress");
         }
     }
 

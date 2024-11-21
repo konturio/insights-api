@@ -38,7 +38,7 @@ public class BivariateIndicatorRowMapper implements RowMapper<BivariateIndicator
         bivariateIndicatorDto.setInternalId(resultSet.getString(BivariateIndicatorsColumns.internal_id.name()));
         bivariateIndicatorDto.setOwner(resultSet.getString(BivariateIndicatorsColumns.owner.name()));
 
-        String state = resultSet.getString(BivariateIndicatorsColumns.state.name());
+        String state = resultSet.getString(BivariateIndicatorsColumns.state.name()).replace(" ", "_");
         bivariateIndicatorDto.setState(state != null ? IndicatorState.valueOf(state) : null);
 
         bivariateIndicatorDto.setIsPublic(resultSet.getBoolean(BivariateIndicatorsColumns.is_public.name()));

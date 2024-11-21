@@ -3,5 +3,6 @@ package io.kontur.insightsapi.dto;
 public enum IndicatorState {
     NEW,
     READY,
-    OUTDATED
+    OUTDATED,
+    COPY_IN_PROGRESS
 }

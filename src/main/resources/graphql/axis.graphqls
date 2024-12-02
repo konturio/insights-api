@@ -4,7 +4,7 @@ type Axis {
     datasetStats: DatasetStats,
     quality: Float,
     quotient: [String],
-    quotients: [Quotient],
+    quotients: [Indicator],
     transformation: Transformation,
     parent: [String]
 }

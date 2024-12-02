@@ -26,7 +26,7 @@ public class Axis implements Cloneable, Serializable {
 
     private List<String> quotient;
 
-    private List<Quotient> quotients;
+    private List<Indicator> quotients;
 
     private List<String> parent;
 

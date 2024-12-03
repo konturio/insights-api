@@ -30,9 +30,12 @@ with hexes as (
         join hexes using(h3)
 ),
     res as (
-        select h3, indicator_uuid, coalesce(true_values.indicator_value, sampled_values.indicator_value) indicator_value
-        from sampled_values
-        left join true_values using(h3, indicator_uuid)
+        select *
+        from sampled_values 
+        where indicator_uuid not in (select distinct indicator_uuid from true_values)
+        union all
+        select *
+        from true_values
 )
 select ST_AsMVT(q, 'stats', 8192, 'geom', 'h3ind') as tile
 from (select

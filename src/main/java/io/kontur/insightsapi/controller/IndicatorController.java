@@ -70,7 +70,9 @@ public class IndicatorController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @PostMapping(value = "/upload", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<String> createIndicator(HttpServletRequest request) {
-        return indicatorService.uploadIndicatorData(request, false);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body("Service is temporarily unavailable due to maintenance");
+        //return indicatorService.uploadIndicatorData(request, false);
     }
 
     @Operation(
@@ -110,7 +112,9 @@ public class IndicatorController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @PutMapping(value = "/upload", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<String> updateIndicator(HttpServletRequest request) {
-        return indicatorService.uploadIndicatorData(request, true);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body("Service is temporarily unavailable due to maintenance");
+        //return indicatorService.uploadIndicatorData(request, true);
     }
 
     @Operation(

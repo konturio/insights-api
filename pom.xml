@@ -5,7 +5,7 @@
 
     <groupId>io.kontur</groupId>
     <artifactId>insights-api</artifactId>
-    <version>0.22.5</version>
+    <version>0.22.6</version>
     <name>insights-api</name>
     <description>Kontur Insights API</description>
 

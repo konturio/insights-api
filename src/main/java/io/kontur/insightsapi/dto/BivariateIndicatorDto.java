@@ -81,7 +81,7 @@ public class BivariateIndicatorDto {
     private OffsetDateTime lastUpdated;
 
     @JsonProperty(value = "downscale")
-    @Pattern(regexp = "equal|proportional", message = "Scale must be 'equal' or 'proportional'")
+    @Pattern(regexp = "equal|proportional", message = "Downscale value must be 'equal' or 'proportional'")
     private String downscale;
 
     @JsonProperty(value = "hash")

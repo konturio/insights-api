@@ -76,7 +76,6 @@ public class IndicatorService {
                     itemIndex++;
                 } else if (!item.isFormField() && "file".equals(item.getFieldName()) && itemIndex == 1) {
                     indicatorRepository.checkActiveUpload(indicatorMetadata);
-                    indicatorRepository.checkLastUploadHash(indicatorMetadata);
                     String uploadId = randomUUID().toString();
                     Path tempFile = Paths.get("/tmp", "upload_" + uploadId + ".csv");
                     try (InputStream inputStream = item.openStream()) {

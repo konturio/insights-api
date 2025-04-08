@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,7 +70,9 @@ public class IndicatorController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @PostMapping(value = "/upload", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<String> createIndicator(HttpServletRequest request) {
-        return indicatorService.uploadIndicatorData(request, false);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body("Service is temporarily unavailable due to maintenance");
+        //return indicatorService.uploadIndicatorData(request, false);
     }
 
     @Operation(
@@ -109,7 +112,9 @@ public class IndicatorController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @PutMapping(value = "/upload", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<String> updateIndicator(HttpServletRequest request) {
-        return indicatorService.uploadIndicatorData(request, true);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body("Service is temporarily unavailable due to maintenance");
+        //return indicatorService.uploadIndicatorData(request, true);
     }
 
     @Operation(

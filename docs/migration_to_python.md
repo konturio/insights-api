@@ -20,15 +20,16 @@ This document outlines a phased approach for rewriting the Insights API from Jav
    - Port tile, indicator and population services.
    - Create a minimal GraphQL schema using Strawberry.
 
-4. **Replace data access layer**
+4. **Replace data access layer** ✅
    - Implement repository classes using `asyncpg` for asynchronous PostgreSQL queries.
    - Prefer `row_factory=dict` and avoid rewriting Java mappers 1:1.
    - Provide database migrations and port existing SQL scripts using Alembic.
    - Create a connection pool in `insights_api.db` and share it across services.
 
 5. **Introduce testing framework**
-   - Set up pytest and `pytest-asyncio` for unit and integration tests.
-   - Reimplement existing Java tests in Python.
+   - Add `pytest` and `pytest-asyncio` to dependencies.
+   - Configure a basic `pytest.ini` with async settings.
+   - Reimplement existing Java tests in Python modules.
    - Add integration tests with a temporary PostgreSQL instance.
    - Integrate coverage reporting and run tests in CI.
 
@@ -37,15 +38,26 @@ This document outlines a phased approach for rewriting the Insights API from Jav
    - Maintain interoperability via HTTP APIs during the transition.
    - Provide fallbacks to Java endpoints when functionality is missing in Python.
    - Continuously verify parity between Java and Python implementations.
+   - Schedule deprecation of Java modules once parity is confirmed.
 
 7. **Update CI/CD pipeline**
-   - Configure Python tooling and dependency management.
+   - Configure Python tooling (formatters and linters).
    - Build and publish a Docker image for the Python service.
    - Ensure new code passes linting and tests in CI.
    - Deploy both Java and Python services via the existing pipeline until migration is complete.
+   - Remove Java build steps once the migration finishes.
+
 
 ## Status
 
-The Python package now contains service logic for tiles, indicators and
-population calculations. A minimal Strawberry GraphQL endpoint is mounted in
-`insights_api.__init__`.
+The Python package now calls repository methods directly from the route
+handlers. Database access uses `asyncpg` with a shared connection pool and
+initial schema migrations are managed via Alembic under `python/alembic`.
+
+## Next Steps
+
+- ☐ Finalize GraphQL schema and resolvers using Strawberry
+- ☐ Implement CSV upload pipeline for indicators
+- ☐ Port OSM quality and urban core calculations
+- ☐ Introduce `pytest` with async support and write integration tests
+- ☐ Configure CI to build Docker images and run tests

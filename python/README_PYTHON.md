@@ -14,7 +14,11 @@ This directory contains the Python rewrite of the Insights API.
    ```bash
    pip install -r requirements.txt
    ```
-4. Run the development server:
+4. Apply database migrations (optional):
+   ```bash
+   alembic upgrade head
+   ```
+5. Run the development server:
    ```bash
    python -m insights_api.main
    ```

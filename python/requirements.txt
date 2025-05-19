@@ -2,3 +2,5 @@ starlette
 uvicorn
 asyncpg
 aiohttp
+SQLAlchemy
+alembic

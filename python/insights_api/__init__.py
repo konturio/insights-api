@@ -1,6 +1,35 @@
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse, Response
-from starlette.routing import Route
+from starlette.routing import Route, Mount
+
+import strawberry
+from strawberry.asgi import GraphQL
+
+from .db import get_pool
+from .models import AxisOverridesRequest
+from .repositories import (
+    AxisRepository,
+    IndicatorRepository,
+    TileRepository,
+    PopulationRepository,
+)
+from .services import (
+    AxisService,
+    TileService,
+    IndicatorService,
+    PopulationService,
+)
+
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    def hello(self) -> str:
+        return "Hello, GraphQL"
+
+
+schema = strawberry.Schema(query=Query)
+graphql_app = GraphQL(schema)
 
 
 async def homepage(request):
@@ -13,71 +42,126 @@ async def clean_caches(request):
 
 
 async def get_bivariate_tile_v1(request):
-    """Return empty vector tile placeholder."""
-    return Response(b"", media_type="application/vnd.mapbox-vector-tile")
+    """Return bivariate tile using ``TileService``."""
+    z = int(request.path_params["z"])
+    x = int(request.path_params["x"])
+    y = int(request.path_params["y"])
+    indicators_class = request.query_params.get("indicatorsClass", "all")
+    indicators = request.query_params.getlist("indicators") or None
+
+    pool = await get_pool()
+    repo = TileRepository(pool)
+    service = TileService(repo)
+    tile = await service.get_bivariate_tile_v1(z, x, y, indicators_class, indicators)
+    return Response(tile, media_type="application/vnd.mapbox-vector-tile")
 
 
 async def calculate_population(request):
-    """Calculate population statistic (stub)."""
-    await request.body()
-    return JSONResponse({"statistic": "todo"})
+    """Calculate population statistic using ``PopulationService``."""
+    body = await request.body()
+    pool = await get_pool()
+    repo = PopulationRepository(pool)
+    service = PopulationService(repo)
+    result = await service.calculate_population(body.decode())
+    return JSONResponse(result)
 
 
 async def focus_humanitarian_impact(request):
-    """Return humanitarian impact result (stub)."""
-    await request.body()
-    return JSONResponse({"impact": "todo"})
+    """Return humanitarian impact result using ``PopulationService``."""
+    body = await request.body()
+    pool = await get_pool()
+    repo = PopulationRepository(pool)
+    service = PopulationService(repo)
+    result = await service.humanitarian_impact(body.decode())
+    return JSONResponse(result)
 
 
 async def calculate_population_several(request):
-    """Calculate population for several polygons (stub)."""
-    await request.body()
-    return JSONResponse([])
+    """Calculate population for several polygons using ``PopulationService``."""
+    data = await request.json()
+    pool = await get_pool()
+    repo = PopulationRepository(pool)
+    service = PopulationService(repo)
+    result = await service.calculate_several(data)
+    return JSONResponse(result)
 
 
 async def get_bivariate_tile_v2(request):
-    """Return empty vector tile placeholder for API v2."""
-    return Response(b"", media_type="application/vnd.mapbox-vector-tile")
+    """Return bivariate tile for API v2 using ``TileService``."""
+    z = int(request.path_params["z"])
+    x = int(request.path_params["x"])
+    y = int(request.path_params["y"])
+    indicators = request.query_params.getlist("indicators") or None
+
+    pool = await get_pool()
+    repo = TileRepository(pool)
+    service = TileService(repo)
+    tile = await service.get_bivariate_tile_v2(z, x, y, indicators)
+    return Response(tile, media_type="application/vnd.mapbox-vector-tile")
 
 
-async def graphql_endpoint(request):
-    """Placeholder for GraphQL queries."""
-    await request.body()
-    return JSONResponse({"data": None})
 
 
 async def upload_indicator(request):
-    """Stub for indicator upload."""
+    """Upload indicator data using ``IndicatorService``."""
+    pool = await get_pool()
+    repo = IndicatorRepository(pool)
+    service = IndicatorService(repo)
     await request.body()
-    return JSONResponse({"uploadId": "todo"})
+    upload_id = await service.upload(None, None)
+    return JSONResponse({"uploadId": upload_id})
 
 
 async def update_indicator(request):
-    """Stub for indicator update."""
+    """Update indicator using ``IndicatorService``."""
+    pool = await get_pool()
+    repo = IndicatorRepository(pool)
+    service = IndicatorService(repo)
     await request.body()
-    return JSONResponse({"uploadId": "todo"})
+    upload_id = await service.update(None, None)
+    return JSONResponse({"uploadId": upload_id})
 
 
 async def upload_status(request):
-    """Return upload status (stub)."""
+    """Return upload status using ``IndicatorService``."""
     upload_id = request.path_params["upload_id"]
-    return JSONResponse({"uploadId": upload_id, "status": "processing"})
+    pool = await get_pool()
+    repo = IndicatorRepository(pool)
+    service = IndicatorService(repo)
+    status = await service.upload_status(upload_id)
+    return JSONResponse({"uploadId": upload_id, "status": status})
 
 
 async def list_indicators(request):
-    """Return list of indicators (stub)."""
-    return JSONResponse([])
+    """List indicators using ``IndicatorService``."""
+    pool = await get_pool()
+    repo = IndicatorRepository(pool)
+    service = IndicatorService(repo)
+    indicators = await service.list_indicators()
+    return JSONResponse(indicators)
 
 
 async def get_indicator(request):
-    """Return indicator metadata (stub)."""
+    """Return indicator metadata using ``IndicatorService``."""
     indicator_id = request.path_params["id"]
-    return JSONResponse({"id": indicator_id})
+    pool = await get_pool()
+    repo = IndicatorRepository(pool)
+    service = IndicatorService(repo)
+    indicator = await service.get_indicator(indicator_id)
+    return JSONResponse(indicator)
 
 
 async def upload_axis_overrides(request):
-    """Stub for uploading custom axis labels."""
-    await request.body()
+    """Upload custom axis labels using `AxisService`."""
+    payload = await request.json()
+    model = AxisOverridesRequest(**payload)
+    owner = request.headers.get("X-Username", "anonymous")
+
+    pool = await get_pool()
+    repo = AxisRepository(pool)
+    service = AxisService(repo)
+    await service.insert_overrides(model, owner)
+
     return JSONResponse({"status": "received"})
 
 
@@ -121,6 +205,12 @@ app = Starlette(
             upload_axis_overrides,
             methods=["POST"],
         ),
-        Route("/graphql", graphql_endpoint, methods=["POST"]),
+        Mount("/graphql", graphql_app),
     ],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection pool."""
+    await get_pool()

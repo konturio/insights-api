@@ -11,7 +11,7 @@ Below is a summary of the main tables defined in `init_schema.sql` and related c
 - `y_numerator_id`, `y_denominator_id` – references to numerator and denominator indicators (UUID)
 
 ## bivariate_axis_overrides
-Stores user provided overrides for bivariate axis labels and values.
+Stores user-provided overrides for bivariate axis labels and values.
 - `numerator_id` (UUID, not null)
 - `denominator_id` (UUID, not null)
 - `label`, `min`, `p25`, `p75`, `max`
@@ -57,3 +57,4 @@ Stores indicator values per H3 cell. The table is partitioned by `indicator_uuid
 
 ## Additional Functions and Changes
 Other changelog files create helper SQL functions (`calculate_area_resolution`, `zoom_to_h3_resolution`) and additional tables such as `bivariate_unit`, `bivariate_unit_localization` and `bivariate_colors` with seed data.
+

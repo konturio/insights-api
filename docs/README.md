@@ -1,6 +1,7 @@
-# System Design Documentation
+# Documentation
 
-This folder contains documentation summarizing key aspects of the Insights API. The goal is to provide a quick reference on how the service is structured and what data it persists.
+This directory contains short guides describing the structure of the service and its persistent storage.
 
 - [Endpoints](endpoints.md) – list of REST and GraphQL endpoints.
-- [Database Schema](database_schema.md) – overview of the schema created via Liquibase.
+- [Database schema](database_schema.md) – overview of tables created via Liquibase.
+- [Stat JSON spec](stat_json_spec.md) – format of the dataset metadata file.

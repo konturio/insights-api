@@ -29,3 +29,4 @@ GraphQL queries are served under the standard `/graphql` endpoint. The root `Que
 - `getAxes: AxisInfo`
 
 GraphQL schema definitions are located under `src/main/resources/graphql`.
+

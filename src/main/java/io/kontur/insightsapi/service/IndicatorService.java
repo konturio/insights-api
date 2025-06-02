@@ -65,14 +65,20 @@ public class IndicatorService {
 
                     indicatorMetadata.setOwner(authService.getCurrentUsername().orElseThrow());
 
-                    if (isUpdate) {
-                        if (invalidIndicatorExternalId(indicatorMetadata.getExternalId())) {
-                            return logAndReturnErrorWithMessage(HttpStatus.NOT_FOUND,
-                                    "Indicator with uuid " + indicatorMetadata.getExternalId() + " not found");
-                        }
+                if (isUpdate) {
+                    if (invalidIndicatorExternalId(indicatorMetadata.getExternalId())) {
+                        return logAndReturnErrorWithMessage(HttpStatus.NOT_FOUND,
+                                "Indicator with uuid " + indicatorMetadata.getExternalId() + " not found");
+                    }
+                } else {
+                    String existingExternalId = indicatorRepository.getExternalIdByOwnerAndParamId(
+                            indicatorMetadata.getOwner(), indicatorMetadata.getId());
+                    if (existingExternalId != null) {
+                        indicatorMetadata.setExternalId(existingExternalId);
                     } else {
                         indicatorMetadata.setExternalId(randomUUID().toString());
                     }
+                }
                     itemIndex++;
                 } else if (!item.isFormField() && "file".equals(item.getFieldName()) && itemIndex == 1) {
                     indicatorRepository.checkActiveUpload(indicatorMetadata);

@@ -34,3 +34,4 @@ environment and python script with test. More about test framework here http://d
 5) Some **TODOs** added among the code
 6) Java version is 16 for Insights
 7) All method names reflect their behavior
+8) `POST /indicators/upload` reuses the existing indicator UUID if metadata with the same `param_id` already exists for the current owner

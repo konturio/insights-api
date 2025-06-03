@@ -1,3 +1,8 @@
+"""
+Single step describing a numeric boundary of an axis.
+
+If `label` is provided it is shown in the legend instead of the value.
+"""
 type Step {
     label: String,
     value: Float

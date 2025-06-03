@@ -1,3 +1,10 @@
+"""
+Axis definition used to build legends and color scales.
+
+* `label` is both the display name and an implicit identifier
+* `steps` contain pre-calculated min/avg/max values
+* `quotient` defines a pair of dataset fields `[numerator, denominator]`
+"""
 type Axis {
     label: String,
     steps: [Step],

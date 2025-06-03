@@ -1,3 +1,9 @@
+"""
+Color entry referenced from overlays.
+
+`id` uses A1–C3 notation for matrix coordinates.
+`color` is an RGB string.
+"""
 type OverlayColor {
     id: String,
     color: String

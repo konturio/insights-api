@@ -24,7 +24,7 @@ A basic GraphiQL interface is available at `http://url/graphiql`.
     yNumeratorList: ["population", "area_km2"]
   }) { fields } }
 ```
-Fields are described in [docs/stat_json_spec.md](docs/stat_json_spec.md).
+Field definitions are available in the [GraphQL schema](src/main/resources/graphql).
 
 ## Performance tests
 A simple Locust test script is provided under `scripts/test.py`. It uses

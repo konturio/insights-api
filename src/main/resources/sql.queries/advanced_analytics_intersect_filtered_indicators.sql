@@ -1,13 +1,13 @@
 with pairs(nominator, denominator) as (values %s),
      validated_input
          as (select (:polygon)::geometry as geom),
-     boxinput as (select st_envelope(v.geom) as bbox from validated_input as v),
-     subdivision as (select st_subdivide(v.geom) geom from validated_input v),
+    boxinput as (select ST_Envelope(v.geom) as bbox from validated_input as v),
+    subdivision as (select ST_Subdivide(v.geom) geom from validated_input v),
      hexes as materialized (
              select distinct sh.h3
              from boxinput bi
                       cross join subdivision sb
-                      join stat_h3_geom sh on (sh.geom && bi.bbox and st_intersects(sh.geom, sb.geom) and sh.resolution = 8)),
+                     join stat_h3_geom sh on (sh.geom && bi.bbox and ST_Intersects(sh.geom, sb.geom) and sh.resolution = 8)),
      ids(internal_id) as materialized (select nominator from pairs union all select denominator from pairs),
      res as (select st.h3, st.indicator_uuid, st.indicator_value
              from stat_h3_transposed st

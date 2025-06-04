@@ -1,6 +1,6 @@
 -- with validated_input as (
 --     select (:polygon)::geometry as geom
--- ), boxinput as (select st_envelope(v.geom) as bbox
+-- ), boxinput as (select ST_Envelope(v.geom) as bbox
 --                 from validated_input as v
 -- ), subdivision as (
 --     select ST_Subdivide(v.geom) geom
@@ -8,7 +8,7 @@
 --     res as (select st.h3, indicator_uuid, indicator_value
 -- from boxinput bi
 --     cross join subdivision sb
---     join stat_h3_geom sh on (sh.geom && bi.bbox and st_intersects(sh.geom, sb.geom))
+--     join stat_h3_geom sh on (sh.geom && bi.bbox and ST_Intersects(sh.geom, sb.geom))
 --     join stat_h3_transposed st on (indicator_uuid in (select internal_id from bivariate_indicators_metadata) and sh.h3 = st.h3)
 -- order by st.h3, indicator_uuid
 -- ),
@@ -31,7 +31,7 @@
 -- where a.h3 = b.h3
 -- group by 1, 2, 3, 4;
 
--- hotfix!
+-- temporary fix; remove after migrating to correlation view
 select 
 x_numerator_id xnumuuid,
 x_denominator_id xdenuuid,

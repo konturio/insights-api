@@ -1,11 +1,11 @@
 with validated_input
          as (select (:polygon)::geometry as geom),
-     boxinput as (select st_envelope(v.geom) as bbox from validated_input as v),
-     subdivision as (select st_subdivide(v.geom) geom from validated_input v),
+    boxinput as (select ST_Envelope(v.geom) as bbox from validated_input as v),
+    subdivision as (select ST_Subdivide(v.geom) geom from validated_input v),
      res as (select st.h3, indicator_uuid, indicator_value
              from boxinput bi
                       cross join subdivision sb
-                      join stat_h3_geom sh on (sh.geom && bi.bbox and st_intersects(sh.geom, sb.geom))
+                     join stat_h3_geom sh on (sh.geom && bi.bbox and ST_Intersects(sh.geom, sb.geom))
                       join stat_h3_transposed st on (sh.h3 = st.h3)
              where sh.resolution = 8
                and indicator_uuid IN (select internal_id
@@ -26,7 +26,7 @@ from (select a.h3,
     bivariate_indicators_metadata bi_c,
     bivariate_indicators_metadata bi_d,
     bivariate_indicators_metadata bi_e,
-    bivariate_indicators_metadata bi_f  -- TODO: not used?
+    bivariate_indicators_metadata bi_f  -- todo: not used?
     where
     a.h3 = b.h3 and a.h3= c.h3 and a.h3=d.h3 and a.h3=e.h3 and a.indicator_uuid = bi_a.internal_id
     and b.indicator_uuid = bi_b.internal_id

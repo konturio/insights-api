@@ -1,8 +1,8 @@
 with resolution as (select calculate_area_resolution_v2(ST_SetSRID(:geometry::geometry, 4326)) as resolution),
      validated_input
          as (select (:transformed_geometry)::geometry as geom),
-     boxinput as (select st_envelope(v.geom) as bbox from validated_input as v),
-     subdivision as (select st_subdivide(v.geom) geom from validated_input v),
+    boxinput as (select ST_Envelope(v.geom) as bbox from validated_input as v),
+    subdivision as (select ST_Subdivide(v.geom) geom from validated_input v),
      %s,
      stat_in_area as (select s.*, sum(population) over (order by population desc) as sum_pop from indicators_as_columns s),
      total as (select sum(population) as population, round(sum(populated_area_km2)::numeric, 2) as area from stat_in_area)

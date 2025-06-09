@@ -11,7 +11,9 @@ import lombok.AllArgsConstructor;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.RequestContext;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.fileupload.servlet.ServletRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.*;
 import java.io.*;
+import java.util.zip.GZIPInputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
@@ -50,10 +53,38 @@ public class IndicatorService {
 
     public static final int UUID_STRING_LENGTH = 36;
 
+    private FileItemIterator getItemIterator(HttpServletRequest request) throws FileUploadException, IOException {
+        if ("gzip".equalsIgnoreCase(request.getHeader("Content-Encoding"))) {
+            RequestContext context = new RequestContext() {
+                @Override
+                public String getCharacterEncoding() {
+                    return request.getCharacterEncoding();
+                }
+
+                @Override
+                public String getContentType() {
+                    return request.getContentType();
+                }
+
+                @Override
+                public int getContentLength() {
+                    return request.getContentLength();
+                }
+
+                @Override
+                public InputStream getInputStream() throws IOException {
+                    return new GZIPInputStream(request.getInputStream());
+                }
+            };
+            return upload.getItemIterator(context);
+        }
+        return upload.getItemIterator(new ServletRequestContext(request));
+    }
+
     public ResponseEntity<String> uploadIndicatorData(HttpServletRequest request, boolean isUpdate) {
         try {
             BivariateIndicatorDto indicatorMetadata = null;
-            FileItemIterator itemIterator = upload.getItemIterator(request);
+            FileItemIterator itemIterator = getItemIterator(request);
             int itemIndex = 0;
 
             while (itemIterator.hasNext()) {

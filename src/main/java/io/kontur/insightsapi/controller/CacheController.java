@@ -1,6 +1,6 @@
 package io.kontur.insightsapi.controller;
 
-import io.kontur.insightsapi.service.cacheable.CacheEvictable;
+import io.kontur.insightsapi.service.cacheable.CacheCleanUpService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 @Tag(name = "Cache", description = "Cache API")
 @RestController
@@ -18,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CacheController {
 
-    private final List<CacheEvictable> cacheEvictables;
+    private final CacheCleanUpService cacheCleanUpService;
 
     @Operation(summary = "Clean all caches.",
             tags = {"Cache"},
@@ -30,6 +29,6 @@ public class CacheController {
                     @ApiResponse(responseCode = "500", description = "Internal error")})
     @GetMapping("/cleanUp")
     public void cleanCaches() {
-        cacheEvictables.forEach(CacheEvictable::evict);
+        cacheCleanUpService.cleanUpIfRequired();
     }
 }

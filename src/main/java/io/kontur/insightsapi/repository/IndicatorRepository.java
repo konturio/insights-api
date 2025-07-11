@@ -30,6 +30,8 @@ import java.nio.file.Path;
 import java.sql.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -357,6 +359,24 @@ public class IndicatorRepository {
     public Instant getIndicatorsLastUpdateDate() {
         Timestamp lastUpdated = jdbcTemplate.queryForObject("SELECT MAX(last_updated) FROM bivariate_indicators_metadata", Timestamp.class);
         return lastUpdated != null ? lastUpdated.toInstant() : null;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Instant> getIndicatorsLastUpdateDates(List<String> indicatorIds) {
+        if (indicatorIds == null || indicatorIds.isEmpty()) {
+            return Map.of();
+        }
+        String inSql = String.format("'%s'", String.join("','", indicatorIds));
+        String sql = String.format("SELECT param_id, last_updated FROM bivariate_indicators_metadata WHERE param_id in (%s)", inSql);
+        return jdbcTemplate.query(sql, rs -> {
+            Map<String, Instant> result = new HashMap<>();
+            while (rs.next()) {
+                String id = rs.getString("param_id");
+                Timestamp ts = rs.getTimestamp("last_updated");
+                result.put(id, ts != null ? ts.toInstant() : null);
+            }
+            return result;
+        });
     }
 
     private void initParams(PreparedStatement ps, BivariateIndicatorDto bivariateIndicatorDto) throws SQLException, JsonProcessingException {

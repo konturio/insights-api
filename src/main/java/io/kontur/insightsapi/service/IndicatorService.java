@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -146,6 +147,10 @@ public class IndicatorService {
 
     public Instant getIndicatorsLastUpdateDate() {
         return indicatorRepository.getIndicatorsLastUpdateDate();
+    }
+
+    public Map<String, Instant> getIndicatorsLastUpdateDates(List<String> indicatorIds) {
+        return indicatorRepository.getIndicatorsLastUpdateDates(indicatorIds);
     }
 
     public boolean invalidIndicatorExternalId(String externalId) {

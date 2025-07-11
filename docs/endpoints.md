@@ -6,7 +6,7 @@ This document summarizes the available HTTP and GraphQL endpoints implemented in
 
 | Method | Path | Description | Source |
 |-------|------|-------------|-------|
-| GET | `/cache/cleanUp` | Clean all caches | `CacheController` |
+| GET | `/cache/cleanUp` | Remove outdated cache entries | `CacheController` |
 | POST | `/indicators/upload` | Create indicator by uploading CSV data and metadata. If an indicator with the same `param_id` already exists, a new version is created using its existing uuid. | `IndicatorController` |
 | PUT | `/indicators/upload` | Update indicator data | `IndicatorController` |
 | GET | `/indicators/upload/status/{uploadId}` | Get indicator upload status | `IndicatorController` |

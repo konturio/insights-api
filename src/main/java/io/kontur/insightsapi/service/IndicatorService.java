@@ -145,10 +145,17 @@ public class IndicatorService {
         }
     }
 
+    /**
+     * Timestamp of the most recently updated indicator. Used to invalidate
+     * caches that don't track individual indicators.
+     */
     public Instant getIndicatorsLastUpdateDate() {
         return indicatorRepository.getIndicatorsLastUpdateDate();
     }
 
+    /**
+     * Fetch update timestamps for the given indicator IDs.
+     */
     public Map<String, Instant> getIndicatorsLastUpdateDates(List<String> indicatorIds) {
         return indicatorRepository.getIndicatorsLastUpdateDates(indicatorIds);
     }

@@ -356,18 +356,29 @@ public class IndicatorRepository {
         }
     }
 
+    /**
+     * @return timestamp of the most recently updated indicator or {@code null}
+     * if there are no indicators yet.
+     */
     public Instant getIndicatorsLastUpdateDate() {
-        Timestamp lastUpdated = jdbcTemplate.queryForObject("SELECT MAX(last_updated) FROM bivariate_indicators_metadata", Timestamp.class);
+        Timestamp lastUpdated = jdbcTemplate.queryForObject(
+                "SELECT MAX(last_updated) FROM bivariate_indicators_metadata",
+                Timestamp.class);
         return lastUpdated != null ? lastUpdated.toInstant() : null;
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Fetch update timestamps for the provided indicator IDs.
+     */
     public Map<String, Instant> getIndicatorsLastUpdateDates(List<String> indicatorIds) {
         if (indicatorIds == null || indicatorIds.isEmpty()) {
             return Map.of();
         }
         String inSql = String.format("'%s'", String.join("','", indicatorIds));
-        String sql = String.format("SELECT param_id, last_updated FROM bivariate_indicators_metadata WHERE param_id in (%s)", inSql);
+        String sql = String.format(
+                "SELECT param_id, last_updated FROM bivariate_indicators_metadata WHERE param_id in (%s)",
+                inSql);
         return jdbcTemplate.query(sql, rs -> {
             Map<String, Instant> result = new HashMap<>();
             while (rs.next()) {

@@ -30,7 +30,13 @@ public class CacheConfig extends CachingConfigurerSupport {
 
     private final IndicatorService indicatorService;
 
-    private String version() {
+    /**
+     * Version string that changes whenever any indicator in the system is updated
+     * or removed. Stored as milliseconds since the epoch or {@code "none"} when
+     * there are no indicators. Used for caches that do not depend on particular
+     * indicator IDs.
+     */
+    private String globalVersion() {
         Instant lastUpdated = indicatorService.getIndicatorsLastUpdateDate();
         return lastUpdated == null ? "none" : String.valueOf(lastUpdated.toEpochMilli());
     }
@@ -41,7 +47,12 @@ public class CacheConfig extends CachingConfigurerSupport {
      * If a method needs per-indicator caching it should supply the indicator ID
      * wrapped in one of the supported DTOs.
      */
-    private List<String> extractIds(Object param) {
+    /**
+     * Collect all indicator identifiers found in the given parameter. The method
+     * recognizes a few DTO types that embed indicator IDs. Strings or lists of
+     * primitive values are ignored to avoid accidentally treating them as IDs.
+     */
+    private List<String> collectIndicatorIds(Object param) {
         List<String> ids = new ArrayList<>();
         if (param == null) {
             return ids;
@@ -49,7 +60,7 @@ public class CacheConfig extends CachingConfigurerSupport {
 
         if (param instanceof List<?> list) {
             for (Object obj : list) {
-                ids.addAll(extractIds(obj));
+                ids.addAll(collectIndicatorIds(obj));
             }
         } else if (param instanceof BivariateIndicatorDto dto) {
             ids.add(dto.getId());
@@ -80,13 +91,18 @@ public class CacheConfig extends CachingConfigurerSupport {
         return ids;
     }
 
-    private String indicatorsVersion(Object... params) {
+    /**
+     * Compose version string for a cache key based on indicator update times.
+     * When no indicator IDs are found among the parameters the {@link
+     * #globalVersion()} is used.
+     */
+    private String computeIndicatorsVersion(Object... params) {
         List<String> ids = new ArrayList<>();
         for (Object param : params) {
-            ids.addAll(extractIds(param));
+            ids.addAll(collectIndicatorIds(param));
         }
         if (ids.isEmpty()) {
-            return version();
+            return globalVersion();
         }
         Map<String, Instant> updates = indicatorService.getIndicatorsLastUpdateDates(ids);
         ids.sort(String::compareTo);
@@ -98,52 +114,72 @@ public class CacheConfig extends CachingConfigurerSupport {
         return String.join("-", parts);
     }
 
+    /**
+     * KeyGenerator for methods with a single String argument. The argument value
+     * is hashed and combined with the indicator version derived from that
+     * argument if it contains indicator references.
+     */
     @Bean("stringKeyGenerator")
     public KeyGenerator customStringKeyGenerator() {
         return (Object target, Method method, Object... params) -> {
             if (params.length == 1 && params[0] instanceof String) {
                 return hashFunction.hashString((String) params[0], StandardCharsets.UTF_8)
-                        + "_" + indicatorsVersion(params[0]);
+                        + "_" + computeIndicatorsVersion(params[0]);
             }
             throw new IllegalArgumentException("Wrong params for StringKeyGenerator");
         };
     }
 
+    /**
+     * KeyGenerator for methods taking a String and a List. Each argument is
+     * hashed separately and combined with the version computed from both
+     * arguments.
+     */
     @Bean("stringListKeyGenerator")
     public KeyGenerator customStringListKeyGenerator() {
         return (Object target, Method method, Object... params) -> {
             if (params.length == 2 && params[0] instanceof String && params[1] instanceof List) {
                 return hashFunction.hashString((String) params[0], StandardCharsets.UTF_8) + "_"
                         + hashFunction.hashString(params[1].toString(), StandardCharsets.UTF_8)
-                        + "_" + indicatorsVersion(params[0], params[1]);
+                        + "_" + computeIndicatorsVersion(params[0], params[1]);
             }
             throw new IllegalArgumentException("Wrong params for StringListKeyGenerator");
         };
     }
 
+    /**
+     * KeyGenerator for methods with two String parameters.
+     */
     @Bean("stringStringKeyGenerator")
     public KeyGenerator customStringStringKeyGenerator() {
         return (Object target, Method method, Object... params) -> {
             if (params.length == 2 && params[0] instanceof String && params[1] instanceof String) {
                 return hashFunction.hashString((String) params[0], StandardCharsets.UTF_8) + "_"
                         + hashFunction.hashString((String) params[1], StandardCharsets.UTF_8)
-                        + "_" + indicatorsVersion(params[0], params[1]);
+                        + "_" + computeIndicatorsVersion(params[0], params[1]);
             }
             throw new IllegalArgumentException("Wrong params for StringStringKeyGenerator");
         };
     }
 
+    /**
+     * KeyGenerator for single List parameter.
+     */
     @Bean("listKeyGenerator")
     public KeyGenerator customListKeyGenerator() {
         return (Object target, Method method, Object... params) -> {
             if (params.length == 1 && params[0] instanceof List) {
                 return hashFunction.hashString(params[0].toString(), StandardCharsets.UTF_8)
-                        + "_" + indicatorsVersion(params[0]);
+                        + "_" + computeIndicatorsVersion(params[0]);
             }
             throw new IllegalArgumentException("Wrong params for ListKeyGenerator");
         };
     }
 
+    /**
+     * KeyGenerator for methods that accept three parameters which can be either
+     * String or List. This is mainly used by analytics services.
+     */
     @Bean("threeParametersAsStringOrListKeyGenerator")
     public KeyGenerator customThreeParametersAsStringOrListKeyGenerator() {
         return (Object target, Method method, Object... params) -> {
@@ -153,7 +189,7 @@ public class CacheConfig extends CachingConfigurerSupport {
                 return hashFunction.hashString(params[0].toString(), StandardCharsets.UTF_8) + "_"
                         + hashFunction.hashString(params[1].toString(), StandardCharsets.UTF_8) + "_"
                         + hashFunction.hashString(params[2].toString(), StandardCharsets.UTF_8)
-                        + "_" + indicatorsVersion(params[0], params[1], params[2]);
+                        + "_" + computeIndicatorsVersion(params[0], params[1], params[2]);
             }
             throw new IllegalArgumentException("Wrong params for StringStringListKeyGenerator");
         };

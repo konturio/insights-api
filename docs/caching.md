@@ -25,8 +25,15 @@ Feature flags under the `cache` section allow enabling or disabling cache usage 
 
 Only parameters of known DTO types are scanned for indicator IDs when composing
 versioned cache keys. Strings or generic lists are ignored, so callers that need
-per-indicator caching must pass the IDs using `BivariateIndicatorDto`,
-`NumeratorsDenominatorsDto`, `FunctionArgs` or related DTOs.
+per‑indicator caching must pass the IDs using `BivariateIndicatorDto`,
+`NumeratorsDenominatorsDto`, `FunctionArgs` or related DTOs. The resulting key
+ends with a version suffix:
+
+```
+hash_part1_hash_part2_id1:timestamp-id2:timestamp
+```
+
+If no indicator IDs are found the suffix is simply a single timestamp.
 
 ## Cached Services
 
@@ -48,7 +55,7 @@ Each service method is annotated with `@Cacheable` and `@RedisLock` to ensure th
 
 ## Cache Clean Up
 
-`CacheController` delegates cleanup to `CacheCleanUpService` through the `/cache/cleanUp` endpoint. Cache keys include update timestamps for the indicators used to compute the value. During cleanup the service compares these timestamps with the current ones and removes only the keys referencing outdated or deleted indicators so valid entries survive the purge.
+`CacheController` delegates cleanup to `CacheCleanUpService` through the `/cache/cleanUp` endpoint. Cache keys include update timestamps for the indicators used to compute the value. During cleanup the service compares these timestamps with the current ones and removes only the keys referencing outdated or deleted indicators so valid entries survive the purge. Keys whose version suffix still matches the latest timestamp are kept intact.
 
 ## Suggested Improvements
 

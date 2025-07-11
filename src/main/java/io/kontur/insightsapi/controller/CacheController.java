@@ -27,6 +27,10 @@ public class CacheController {
                             content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "400", description = "Bad Request"),
                     @ApiResponse(responseCode = "500", description = "Internal error")})
+    /**
+     * Remove outdated cache entries. Keys that still match the latest indicator
+     * update time remain in Redis.
+     */
     @GetMapping("/cleanUp")
     public void cleanCaches() {
         cacheCleanUpService.cleanUpIfRequired();

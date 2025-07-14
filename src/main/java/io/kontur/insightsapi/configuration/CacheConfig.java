@@ -42,15 +42,11 @@ public class CacheConfig extends CachingConfigurerSupport {
     }
 
     /**
-     * Extract indicator identifiers from known DTO types. Strings are ignored
-     * because callers may pass geometry or other values that are not indicator IDs.
-     * If a method needs per-indicator caching it should supply the indicator ID
-     * wrapped in one of the supported DTOs.
-     */
-    /**
-     * Collect all indicator identifiers found in the given parameter. The method
-     * recognizes a few DTO types that embed indicator IDs. Strings or lists of
-     * primitive values are ignored to avoid accidentally treating them as IDs.
+     * Collect all indicator identifiers found in the given parameter. Strings
+     * or generic lists are ignored because callers may pass geometry or other
+     * values that are not indicator IDs. To enable per-indicator caching the ID
+     * must be wrapped in one of the supported DTOs such as {@link
+     * BivariateIndicatorDto} or {@link FunctionArgs}.
      */
     private List<String> collectIndicatorIds(Object param) {
         List<String> ids = new ArrayList<>();
@@ -106,12 +102,18 @@ public class CacheConfig extends CachingConfigurerSupport {
         }
         Map<String, Instant> updates = indicatorService.getIndicatorsLastUpdateDates(ids);
         ids.sort(String::compareTo);
-        List<String> parts = new ArrayList<>();
-        for (String id : ids) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ids.size(); i++) {
+            String id = ids.get(i);
             Instant ts = updates.get(id);
-            parts.add(id + ":" + (ts == null ? "none" : ts.toEpochMilli()));
+            sb.append(id)
+                    .append(':')
+                    .append(ts == null ? "none" : ts.toEpochMilli());
+            if (i < ids.size() - 1) {
+                sb.append('-');
+            }
         }
-        return String.join("-", parts);
+        return sb.toString();
     }
 
     /**

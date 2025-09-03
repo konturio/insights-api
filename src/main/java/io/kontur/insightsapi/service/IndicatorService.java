@@ -127,21 +127,26 @@ public class IndicatorService {
     public ResponseEntity<String> getIndicatorUploadStatus(String uploadId) {
         String owner = authService.getCurrentUsername().orElseThrow();
         String result = indicatorRepository.getIndicatorIdByUploadId(owner, uploadId);
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("upload failed or uploadId invalid");
+        }
+
         String[] parts = result.split("/");
+        if (parts.length < 2 || parts[1] == null || parts[1].isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("upload failed or uploadId invalid");
+        }
         String externalId = parts[0];
         String indicatorState = parts[1];
         if (indicatorState.equals("COPY IN PROGRESS")) {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(indicatorState);
-        } else if (indicatorState == null) {
-            // indicator not found by upload_id
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("upload scheduled or failed or uploadId invalid");
-        } else {
-            // uploaded successfully. indicator state is now either:
-            // - NEW (ready for processing)
-            // - TMP CREATED (ready for copying to stat_h3_transposed)
-            // - READY (available on UI)
-            return ResponseEntity.ok().body(externalId);
         }
+        // uploaded successfully. indicator state is now either:
+        // - NEW (ready for processing)
+        // - TMP CREATED (ready for copying to stat_h3_transposed)
+        // - READY (available on UI)
+        return ResponseEntity.ok().body(externalId);
     }
 
     public Instant getIndicatorsLastUpdateDate() {

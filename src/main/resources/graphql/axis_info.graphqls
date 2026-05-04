@@ -1,3 +1,6 @@
+"""
+Wrapper type exposing available axes via GraphQL.
+"""
 type AxisInfo {
     axis: [Axis]
 }

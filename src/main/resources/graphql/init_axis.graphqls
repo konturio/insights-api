@@ -1,3 +1,7 @@
+"""
+Default axes used when the application loads.
+Values refer to entries from the `axis` array.
+"""
 type InitAxis {
     x: Axis,
     y: Axis

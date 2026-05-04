@@ -1,3 +1,9 @@
+"""
+Defines a color used when both axes have specific values.
+
+`corner` lists matrix cells the color applies to.
+`color_comment` is an optional note for that color.
+"""
 type Combination {
     color: String,
     corner: [String],

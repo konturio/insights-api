@@ -1,3 +1,10 @@
+"""
+Root object describing statistical data for a polygon.
+
+`axis` lists all available axis configurations
+`initAxis` selects defaults for the legend
+`correlationRates` show the amount of meaningful data for each axis pair
+"""
 type Statistic {
     axis: [Axis],
     meta: Meta,

@@ -1,3 +1,8 @@
+"""
+Legend colors for an overlay.
+
+`fallback` is used when no combination matches
+"""
 type Color {
     fallback: String,
     combinations: [Combination]

@@ -1,3 +1,8 @@
+"""
+Zoom range for which statistic tiles are generated.
+
+When zoom is outside these bounds the closest border level is used.
+"""
 type Meta {
     max_zoom: Int,
     min_zoom: Int
